@@ -4,6 +4,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![npm downloads](https://img.shields.io/npm/dm/openai-gpt-image-mcp-server.svg)](https://www.npmjs.com/package/openai-gpt-image-mcp-server)
 
+English | [日本語](README.ja.md)
+
 A Model Context Protocol (MCP) server that enables image generation and editing using OpenAI's gpt-image-1 API. Works seamlessly with Claude Desktop, Claude Code, and other MCP-compatible clients.
 
 ## Features
