@@ -83,7 +83,7 @@ export async function editImage(
       model: 'gpt-image-1',
       prompt,
       image: referenceBase64!,
-      response_format: 'b64_json',
+      n: 1,
     };
 
     if (maskBase64) {
@@ -106,6 +106,8 @@ export async function editImage(
       requestParams.moderation = moderation;
     }
 
+    debugLog('Request params:', JSON.stringify({ ...requestParams, image: '[REDACTED]', mask: maskBase64 ? '[REDACTED]' : undefined }, null, 2));
+
     const response = await openai.images.edit(requestParams);
 
     debugLog('API response received');
@@ -115,12 +117,27 @@ export async function editImage(
     }
 
     const imageData = response.data[0];
-    if (!imageData.b64_json) {
-      throw new Error('No base64 image data in response');
+
+    let base64Image: string;
+
+    if (imageData.b64_json) {
+      base64Image = imageData.b64_json;
+      debugLog('Using b64_json from response');
+    } else if (imageData.url) {
+      debugLog('Downloading image from URL:', imageData.url);
+      const imageResponse = await fetch(imageData.url);
+      if (!imageResponse.ok) {
+        throw new Error(`Failed to download image: ${imageResponse.statusText}`);
+      }
+      const arrayBuffer = await imageResponse.arrayBuffer();
+      base64Image = Buffer.from(arrayBuffer).toString('base64');
+      debugLog('Image downloaded and converted to base64');
+    } else {
+      throw new Error('No image data (b64_json or url) in response');
     }
 
     // Save image to file
-    await saveBase64Image(imageData.b64_json, output_path);
+    await saveBase64Image(base64Image, output_path);
 
     // Calculate cost (estimated)
     const estimatedInputTokens = Math.ceil(prompt.length / 4);
@@ -144,7 +161,7 @@ export async function editImage(
     let result = `Image edited successfully: ${output_path}\n${costInfo}`;
 
     if (return_base64) {
-      result += `\n\n📎 Base64 data (first 100 chars): ${imageData.b64_json.substring(0, 100)}...`;
+      result += `\n\n📎 Base64 data (first 100 chars): ${base64Image.substring(0, 100)}...`;
     }
 
     return result;
