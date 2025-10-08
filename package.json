@@ -1,0 +1,56 @@
+{
+  "name": "openai-gpt-image-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for OpenAI gpt-image-1 API - Generate and edit images using GPT-Image-1",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "openai-gpt-image-mcp-server": "./dist/index.js"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE",
+    ".env.example"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch",
+    "pack": "npm pack"
+  },
+  "keywords": [
+    "mcp",
+    "openai",
+    "gpt-image-1",
+    "image-generation",
+    "claude",
+    "model-context-protocol",
+    "ai",
+    "image-editing",
+    "text-to-image"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ex-takashima/openAI-gpt-image-1-MCP-SERVER.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ex-takashima/openAI-gpt-image-1-MCP-SERVER/issues"
+  },
+  "homepage": "https://github.com/ex-takashima/openAI-gpt-image-1-MCP-SERVER#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "openai": "^4.73.0",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
