@@ -1,6 +1,8 @@
 # OpenAI GPT-Image-1 MCP Server
 
+[![npm version](https://img.shields.io/npm/v/openai-gpt-image-mcp-server.svg)](https://www.npmjs.com/package/openai-gpt-image-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![npm downloads](https://img.shields.io/npm/dm/openai-gpt-image-mcp-server.svg)](https://www.npmjs.com/package/openai-gpt-image-mcp-server)
 
 A Model Context Protocol (MCP) server that enables image generation and editing using OpenAI's gpt-image-1 API. Works seamlessly with Claude Desktop, Claude Code, and other MCP-compatible clients.
 
@@ -37,8 +39,8 @@ npm install -g openai-gpt-image-mcp-server
 ### From Source
 
 ```bash
-git clone <repository-url>
-cd openai-gpt-image-mcp-server
+git clone https://github.com/ex-takashima/openAI-gpt-image-1-MCP-SERVER.git
+cd openAI-gpt-image-1-MCP-SERVER
 npm install
 npm run build
 ```
