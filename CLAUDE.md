@@ -417,7 +417,30 @@ DEBUG=1 openai-gpt-image-mcp-server
 |--------|------|------|
 | `OPENAI_API_KEY` | ✅ | OpenAI API キー（sk-proj-... 形式） |
 | `OPENAI_ORGANIZATION` | ❌ | OpenAI 組織ID（複数組織に所属の場合） |
+| `OPENAI_IMAGE_OUTPUT_DIR` | ❌ | 画像の保存先ディレクトリ（デフォルト: `~/Downloads/openai-images`） |
 | `DEBUG` | ❌ | "1" を指定するとデバッグログ有効 |
+
+### 画像出力パスについて
+
+画像の保存先は以下の優先順位で決定されます：
+
+1. **絶対パス指定**: `output_path` に絶対パスを指定した場合はそのまま使用
+   - 例: `/Users/username/Desktop/myimage.png`
+   - 例（Windows）: `C:\Users\username\Desktop\myimage.png`
+
+2. **相対パス指定**: `output_path` に相対パスを指定した場合は以下のベースディレクトリからの相対パスとして扱われます
+   - `OPENAI_IMAGE_OUTPUT_DIR` 環境変数で指定したディレクトリ
+   - 未指定の場合: `~/Downloads/openai-images`（全OS対応）
+
+3. **自動ディレクトリ作成**: 指定したパスの親ディレクトリが存在しない場合は自動的に作成されます
+
+**設定例:**
+```bash
+# カスタムディレクトリを設定
+export OPENAI_IMAGE_OUTPUT_DIR="$HOME/Pictures/ai-generated"
+
+# これで相対パス "myimage.png" は ~/Pictures/ai-generated/myimage.png に保存されます
+```
 
 ---
 

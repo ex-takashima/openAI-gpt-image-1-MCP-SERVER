@@ -8,6 +8,7 @@ import * as path from 'path';
 import { imageFileToBase64, saveBase64Image, validateImageFormat, validateImageSize, validateQuality } from '../utils/image.js';
 import { calculateCost, formatCostBreakdown, debugLog } from '../utils/cost.js';
 import { getMimeTypeFromPath } from '../utils/mime.js';
+import { normalizeAndValidatePath, getDisplayPath } from '../utils/path.js';
 
 export interface TransformImageParams {
   prompt: string;
@@ -38,6 +39,9 @@ export async function transformImage(
     moderation = 'auto',
     return_base64 = false,
   } = params;
+
+  // Normalize and validate output path (cross-platform)
+  const normalizedPath = await normalizeAndValidatePath(output_path);
 
   // Validation
   if (!prompt || prompt.trim().length === 0) {
@@ -137,7 +141,7 @@ export async function transformImage(
     }
 
     // Save image to file
-    await saveBase64Image(base64Image, output_path);
+    await saveBase64Image(base64Image, normalizedPath);
 
     // Calculate cost (estimated)
     const estimatedInputTokens = Math.ceil(prompt.length / 4);
@@ -158,7 +162,8 @@ export async function transformImage(
       format: output_format,
     });
 
-    let result = `Image transformed successfully: ${output_path}\n${costInfo}`;
+    const displayPath = getDisplayPath(normalizedPath);
+    let result = `Image transformed successfully: ${displayPath}\n${costInfo}`;
 
     if (return_base64) {
       result += `\n\n📎 Base64 data (first 100 chars): ${base64Image.substring(0, 100)}...`;

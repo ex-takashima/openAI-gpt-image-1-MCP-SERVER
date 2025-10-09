@@ -5,6 +5,7 @@
 import OpenAI from 'openai';
 import { saveBase64Image, validateImageFormat, validateImageSize, validateQuality } from '../utils/image.js';
 import { calculateCost, formatCostBreakdown, debugLog } from '../utils/cost.js';
+import { normalizeAndValidatePath, getDisplayPath } from '../utils/path.js';
 
 export interface GenerateImageParams {
   prompt: string;
@@ -33,6 +34,9 @@ export async function generateImage(
     moderation = 'auto',
     return_base64 = false,
   } = params;
+
+  // Normalize and validate output path (cross-platform)
+  const normalizedPath = await normalizeAndValidatePath(output_path);
 
   // Validation
   if (!prompt || prompt.trim().length === 0) {
@@ -118,7 +122,7 @@ export async function generateImage(
     }
 
     // Save image to file
-    await saveBase64Image(base64Image, output_path);
+    await saveBase64Image(base64Image, normalizedPath);
 
     // Calculate cost (estimated)
     const estimatedInputTokens = Math.ceil(prompt.length / 4); // Rough estimate
@@ -139,7 +143,8 @@ export async function generateImage(
       format: output_format,
     });
 
-    let result = `Image generated successfully: ${output_path}\n${costInfo}`;
+    const displayPath = getDisplayPath(normalizedPath);
+    let result = `Image generated successfully: ${displayPath}\n${costInfo}`;
 
     if (return_base64) {
       result += `\n\n📎 Base64 data (first 100 chars): ${base64Image.substring(0, 100)}...`;
