@@ -2,9 +2,12 @@
  * Edit image tool - Edit images using inpainting with gpt-image-1
  */
 
-import OpenAI from 'openai';
+import OpenAI, { toFile } from 'openai';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { imageFileToBase64, saveBase64Image, validateImageFormat, validateImageSize, validateQuality } from '../utils/image.js';
 import { calculateCost, formatCostBreakdown, debugLog } from '../utils/cost.js';
+import { getMimeTypeFromPath } from '../utils/mime.js';
 
 export interface EditImageParams {
   prompt: string;
@@ -62,18 +65,36 @@ export async function editImage(
   }
 
   try {
-    // Load reference image
-    let referenceBase64 = reference_image_base64;
-    if (!referenceBase64 && reference_image_path) {
-      debugLog(`Loading reference image from: ${reference_image_path}`);
-      referenceBase64 = await imageFileToBase64(reference_image_path);
+    // Prepare reference image as File object
+    let referenceImageFile: any;
+    if (reference_image_path) {
+      // If file path is provided, read the file and convert to File object with proper MIME type
+      debugLog(`Loading reference image from file: ${reference_image_path}`);
+      const buffer = await fs.readFile(reference_image_path);
+      const mimeType = getMimeTypeFromPath(reference_image_path);
+      const fileName = path.basename(reference_image_path);
+      referenceImageFile = await toFile(buffer, fileName, { type: mimeType });
+      debugLog(`Reference image loaded with MIME type: ${mimeType}`);
+    } else if (reference_image_base64) {
+      // If base64 is provided, convert to File object
+      debugLog('Converting reference image from base64 to File object');
+      const buffer = Buffer.from(reference_image_base64, 'base64');
+      referenceImageFile = await toFile(buffer, 'reference.png', { type: 'image/png' });
     }
 
-    // Load mask image (optional)
-    let maskBase64 = mask_image_base64;
-    if (!maskBase64 && mask_image_path) {
-      debugLog(`Loading mask image from: ${mask_image_path}`);
-      maskBase64 = await imageFileToBase64(mask_image_path);
+    // Prepare mask image as File object (optional)
+    let maskImageFile: any = undefined;
+    if (mask_image_path) {
+      debugLog(`Loading mask image from file: ${mask_image_path}`);
+      const buffer = await fs.readFile(mask_image_path);
+      const mimeType = getMimeTypeFromPath(mask_image_path);
+      const fileName = path.basename(mask_image_path);
+      maskImageFile = await toFile(buffer, fileName, { type: mimeType });
+      debugLog(`Mask image loaded with MIME type: ${mimeType}`);
+    } else if (mask_image_base64) {
+      debugLog('Converting mask image from base64 to File object');
+      const buffer = Buffer.from(mask_image_base64, 'base64');
+      maskImageFile = await toFile(buffer, 'mask.png', { type: 'image/png' });
     }
 
     debugLog('Calling OpenAI API for image editing...');
@@ -82,12 +103,12 @@ export async function editImage(
     const requestParams: any = {
       model: 'gpt-image-1',
       prompt,
-      image: referenceBase64!,
+      image: referenceImageFile,
       n: 1,
     };
 
-    if (maskBase64) {
-      requestParams.mask = maskBase64;
+    if (maskImageFile) {
+      requestParams.mask = maskImageFile;
     }
 
     if (size !== 'auto') {
@@ -106,7 +127,7 @@ export async function editImage(
       requestParams.moderation = moderation;
     }
 
-    debugLog('Request params:', JSON.stringify({ ...requestParams, image: '[REDACTED]', mask: maskBase64 ? '[REDACTED]' : undefined }, null, 2));
+    debugLog('Request params:', JSON.stringify({ ...requestParams, image: '[REDACTED]', mask: maskImageFile ? '[REDACTED]' : undefined }, null, 2));
 
     const response = await openai.images.edit(requestParams);
 

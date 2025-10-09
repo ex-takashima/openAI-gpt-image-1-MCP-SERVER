@@ -24,6 +24,11 @@ build/
 
 # Claude Code local settings
 .claude/settings.local.json
+.codex/local.toml
+.codex/**/local.toml
+
+# npm configuration with tokens
+.npmrc
 
 # Logs
 logs/

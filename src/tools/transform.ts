@@ -2,9 +2,12 @@
  * Transform image tool - Transform images using gpt-image-1
  */
 
-import OpenAI from 'openai';
+import OpenAI, { toFile } from 'openai';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { imageFileToBase64, saveBase64Image, validateImageFormat, validateImageSize, validateQuality } from '../utils/image.js';
 import { calculateCost, formatCostBreakdown, debugLog } from '../utils/cost.js';
+import { getMimeTypeFromPath } from '../utils/mime.js';
 
 export interface TransformImageParams {
   prompt: string;
@@ -58,11 +61,21 @@ export async function transformImage(
   }
 
   try {
-    // Load reference image
-    let referenceBase64 = reference_image_base64;
-    if (!referenceBase64 && reference_image_path) {
-      debugLog(`Loading reference image from: ${reference_image_path}`);
-      referenceBase64 = await imageFileToBase64(reference_image_path);
+    // Prepare reference image as File object
+    let referenceImageFile: any;
+    if (reference_image_path) {
+      // If file path is provided, read the file and convert to File object with proper MIME type
+      debugLog(`Loading reference image from file: ${reference_image_path}`);
+      const buffer = await fs.readFile(reference_image_path);
+      const mimeType = getMimeTypeFromPath(reference_image_path);
+      const fileName = path.basename(reference_image_path);
+      referenceImageFile = await toFile(buffer, fileName, { type: mimeType });
+      debugLog(`Reference image loaded with MIME type: ${mimeType}`);
+    } else if (reference_image_base64) {
+      // If base64 is provided, convert to File object
+      debugLog('Converting reference image from base64 to File object');
+      const buffer = Buffer.from(reference_image_base64, 'base64');
+      referenceImageFile = await toFile(buffer, 'reference.png', { type: 'image/png' });
     }
 
     debugLog('Calling OpenAI API for image transformation...');
@@ -72,7 +85,7 @@ export async function transformImage(
     const requestParams: any = {
       model: 'gpt-image-1',
       prompt,
-      image: referenceBase64!,
+      image: referenceImageFile,
       n: 1,
     };
 
