@@ -21,6 +21,7 @@ A Model Context Protocol (MCP) server that enables image generation and editing 
 - 🛡️ **Content Filtering**: Built-in safety filters
 - 📁 **Image Management**: List and organize generated images
 - 🔧 **Debug Mode**: Detailed logging for troubleshooting
+- 🌐 **Cross-Platform**: Works on macOS, Windows, and Linux with smart path handling
 
 ## Prerequisites
 
@@ -94,7 +95,8 @@ Add to your Claude Desktop configuration file:
     "openai-gpt-image": {
       "command": "openai-gpt-image-mcp-server",
       "env": {
-        "OPENAI_API_KEY": "sk-proj-your-api-key-here"
+        "OPENAI_API_KEY": "sk-proj-your-api-key-here",
+        "OPENAI_IMAGE_OUTPUT_DIR": "/Users/username/Pictures/ai-images"
       }
     }
   }
@@ -102,6 +104,11 @@ Add to your Claude Desktop configuration file:
 ```
 
 **Windows users**: Use `openai-gpt-image-mcp-server.cmd` as the command.
+
+**Optional Environment Variables**:
+- `OPENAI_IMAGE_OUTPUT_DIR`: Custom output directory (default: `~/Downloads/openai-images`)
+- `OPENAI_ORGANIZATION`: OpenAI organization ID (if you belong to multiple)
+- `DEBUG`: Set to `1` for detailed logging
 
 Restart Claude Desktop after saving.
 
@@ -228,6 +235,52 @@ List images in a directory.
 **Parameters**:
 - `directory`: Path to search (default: current directory)
 
+## Output Path Handling
+
+Images are saved with smart cross-platform path handling:
+
+### Default Behavior
+
+By default, all images are saved to `~/Downloads/openai-images`:
+- **macOS**: `/Users/username/Downloads/openai-images/`
+- **Windows**: `C:\Users\username\Downloads\openai-images\`
+- **Linux**: `/home/username/Downloads/openai-images/`
+
+### Path Resolution Priority
+
+1. **Absolute paths**: Used as-is
+   ```
+   /Users/username/Desktop/myimage.png  → saved exactly there
+   C:\Users\username\Desktop\myimage.png  → saved exactly there
+   ```
+
+2. **Relative paths**: Resolved from default or custom output directory
+   ```
+   myimage.png  → ~/Downloads/openai-images/myimage.png
+   subfolder/image.png  → ~/Downloads/openai-images/subfolder/image.png
+   ```
+
+3. **Auto-creation**: Parent directories are created automatically
+
+### Custom Output Directory
+
+Set the `OPENAI_IMAGE_OUTPUT_DIR` environment variable:
+
+```json
+{
+  "mcpServers": {
+    "openai-gpt-image": {
+      "env": {
+        "OPENAI_API_KEY": "sk-proj-...",
+        "OPENAI_IMAGE_OUTPUT_DIR": "/Users/username/Pictures/ai-images"
+      }
+    }
+  }
+}
+```
+
+Now `myimage.png` will be saved to `/Users/username/Pictures/ai-images/myimage.png`.
+
 ## Cost Management
 
 All operations automatically report:
@@ -272,6 +325,8 @@ Example output:
 | "organization must be verified" | Complete verification at OpenAI Platform |
 | Generation fails | Try `moderation: "low"` or refine prompt |
 | Edit doesn't work | Ensure mask is transparent PNG |
+| File access error (macOS/Windows) | Use absolute paths or set `OPENAI_IMAGE_OUTPUT_DIR` |
+| "ENOENT: no such file or directory" | Check path format, try default `~/Downloads/openai-images` |
 
 ### Debug Mode
 

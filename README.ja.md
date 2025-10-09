@@ -21,6 +21,7 @@ OpenAI の gpt-image-1 API を使用して画像生成・編集を可能にす�
 - 🛡️ **コンテンツフィルタリング**: 安全性フィルターによる適切な画像生成
 - 📁 **画像管理**: 生成済み画像の一覧表示
 - 🔧 **デバッグモード**: 詳細ログによるトラブルシュート支援
+- 🌐 **クロスプラットフォーム対応**: macOS、Windows、Linux でスマートなパス処理
 
 ## 前提条件
 
@@ -94,7 +95,8 @@ Claude Desktop の設定ファイルに以下を追加：
     "openai-gpt-image": {
       "command": "openai-gpt-image-mcp-server",
       "env": {
-        "OPENAI_API_KEY": "sk-proj-your-api-key-here"
+        "OPENAI_API_KEY": "sk-proj-your-api-key-here",
+        "OPENAI_IMAGE_OUTPUT_DIR": "/Users/username/Pictures/ai-images"
       }
     }
   }
@@ -102,6 +104,11 @@ Claude Desktop の設定ファイルに以下を追加：
 ```
 
 > **Windows ユーザー**: コマンドは `openai-gpt-image-mcp-server.cmd` を使用してください。
+
+**オプションの環境変数**:
+- `OPENAI_IMAGE_OUTPUT_DIR`: カスタム出力ディレクトリ（デフォルト: `~/Downloads/openai-images`）
+- `OPENAI_ORGANIZATION`: OpenAI 組織 ID（複数組織に所属の場合）
+- `DEBUG`: `1` を設定すると詳細ログを有効化
 
 設定保存後、Claude Desktop を**完全に再起動**してください。
 
@@ -229,6 +236,52 @@ Claude Desktop の設定ファイルに以下を追加：
 **パラメータ**:
 - `directory`: 検索対象フォルダ（省略時はカレントディレクトリ）
 
+## 出力パスの処理
+
+画像はスマートなクロスプラットフォーム対応パス処理で保存されます：
+
+### デフォルトの動作
+
+デフォルトでは、すべての画像は `~/Downloads/openai-images` に保存されます：
+- **macOS**: `/Users/username/Downloads/openai-images/`
+- **Windows**: `C:\Users\username\Downloads\openai-images\`
+- **Linux**: `/home/username/Downloads/openai-images/`
+
+### パス解決の優先順位
+
+1. **絶対パス**: そのまま使用
+   ```
+   /Users/username/Desktop/myimage.png  → そのまま保存
+   C:\Users\username\Desktop\myimage.png  → そのまま保存
+   ```
+
+2. **相対パス**: デフォルトまたはカスタム出力ディレクトリからの相対パスとして解決
+   ```
+   myimage.png  → ~/Downloads/openai-images/myimage.png
+   subfolder/image.png  → ~/Downloads/openai-images/subfolder/image.png
+   ```
+
+3. **自動作成**: 親ディレクトリが存在しない場合は自動的に作成
+
+### カスタム出力ディレクトリ
+
+`OPENAI_IMAGE_OUTPUT_DIR` 環境変数を設定：
+
+```json
+{
+  "mcpServers": {
+    "openai-gpt-image": {
+      "env": {
+        "OPENAI_API_KEY": "sk-proj-...",
+        "OPENAI_IMAGE_OUTPUT_DIR": "/Users/username/Pictures/ai-images"
+      }
+    }
+  }
+}
+```
+
+これで `myimage.png` は `/Users/username/Pictures/ai-images/myimage.png` に保存されます。
+
 ## コスト管理
 
 すべての操作で自動的に以下の情報が返却されます：
@@ -267,6 +320,8 @@ Claude Desktop の設定ファイルに以下を追加：
 | "organization must be verified" | [OpenAI Platform](https://platform.openai.com/settings/organization/general) で組織認証を完了 |
 | 画像生成失敗 | プロンプトを具体的に、`moderation: "low"` を試す |
 | 画像編集が期待通りでない | マスク画像が透過 PNG 形式か確認 |
+| ファイルアクセスエラー (macOS/Windows) | 絶対パスを使用、または `OPENAI_IMAGE_OUTPUT_DIR` を設定 |
+| "ENOENT: no such file or directory" | パス形式を確認、デフォルト `~/Downloads/openai-images` を試す |
 
 ### デバッグモード
 
