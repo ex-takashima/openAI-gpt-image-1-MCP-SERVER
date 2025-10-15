@@ -8,17 +8,33 @@ OpenAI の gpt-image-1 API を使用して画像を生成・編集できる MCP�
 
 ## 🌟 主な機能
 
+### 画像生成・編集
 - 🎨 **高品質な画像生成**：gpt-image-1による最先端のテキストから画像生成
 - 📝 **優れたテキストレンダリング**：画像内のテキストを正確に描画
 - ✂️ **精密な画像編集**：インペインティングによる部分編集
 - 🔄 **画像変換**：既存画像のスタイル変換・再解釈
+- 🎲 **複数画像一括生成**：1回のリクエストで最大10枚まで生成可能（sample_count対応）
+
+### カスタマイズ
 - 📐 **柔軟なサイズ設定**：正方形、縦長、横長など多様なサイズに対応
 - 🎚️ **品質レベル調整**：low、medium、high から選択可能
 - 🖼️ **多様な出力形式**：PNG、JPEG、WebP に対応
-- 💰 **コスト管理機能**：トークン使用量とコスト推定を自動計算
 - 🛡️ **コンテンツフィルタリング**：安全性フィルターによる適切な画像生成
+
+### データ管理
+- 💰 **コスト管理機能**：トークン使用量とコスト推定を自動計算
+- 📚 **履歴管理システム**：SQLiteベースの世代履歴記録と検索
+- 🏷️ **メタデータ埋め込み**：PNG/JPEG画像に生成情報を自動埋め込み
 - 📁 **画像管理**：生成済み画像の一覧表示
+
+### 非同期処理
+- ⚡ **非同期ジョブシステム**：バックグラウンドでの画像生成
+- 📊 **ジョブ監視**：進捗状況のリアルタイム追跡
+- 🎯 **複数ジョブ管理**：同時に複数のジョブを実行・管理
+
+### その他
 - 🔧 **デバッグモード**：詳細ログによるトラブルシュート支援
+- 🌐 **クロスプラットフォーム**：Windows/macOS/Linux対応
 
 ---
 
@@ -418,21 +434,31 @@ DEBUG=1 openai-gpt-image-mcp-server
 | `OPENAI_API_KEY` | ✅ | OpenAI API キー（sk-proj-... 形式） |
 | `OPENAI_ORGANIZATION` | ❌ | OpenAI 組織ID（複数組織に所属の場合） |
 | `OPENAI_IMAGE_OUTPUT_DIR` | ❌ | 画像の保存先ディレクトリ（デフォルト: `~/Downloads/openai-images`） |
+| `OPENAI_IMAGE_INPUT_DIR` | ❌ | 入力画像の読み込み元ディレクトリ（デフォルト: 出力ディレクトリと同じ） |
+| `HISTORY_DB_PATH` | ❌ | 履歴データベースの保存場所（デフォルト: `~/.openai-gpt-image/history.db`） |
 | `DEBUG` | ❌ | "1" を指定するとデバッグログ有効 |
 
 ### 画像出力パスについて
 
 画像の保存先は以下の優先順位で決定されます：
 
-1. **絶対パス指定**: `output_path` に絶対パスを指定した場合はそのまま使用
-   - 例: `/Users/username/Desktop/myimage.png`
-   - 例（Windows）: `C:\Users\username\Desktop\myimage.png`
+1. **絶対パス指定**: `output_path` に絶対パスを指定した場合
+   - **セキュリティ**: ベースディレクトリ内に制限されます
+   - 例: `/Users/username/Downloads/openai-images/myimage.png` ✅
+   - 例: `/tmp/myimage.png` ❌（ベースディレクトリ外）
 
-2. **相対パス指定**: `output_path` に相対パスを指定した場合は以下のベースディレクトリからの相対パスとして扱われます
-   - `OPENAI_IMAGE_OUTPUT_DIR` 環境変数で指定したディレクトリ
-   - 未指定の場合: `~/Downloads/openai-images`（全OS対応）
+2. **相対パス指定**: `output_path` に相対パスを指定した場合
+   - ベースディレクトリからの相対パスとして解決されます
+   - ベースディレクトリ: `OPENAI_IMAGE_OUTPUT_DIR` 環境変数（未指定時は `~/Downloads/openai-images`）
+   - 例: `myimage.png` → `~/Downloads/openai-images/myimage.png`
+   - 例: `subfolder/myimage.png` → `~/Downloads/openai-images/subfolder/myimage.png`
 
-3. **自動ディレクトリ作成**: 指定したパスの親ディレクトリが存在しない場合は自動的に作成されます
+3. **セキュリティ保護**: パストラバーサル攻撃を防止
+   - `../` を使ったベースディレクトリ外へのアクセスは拒否されます
+   - 例: `../other/myimage.png` ❌（エラー）
+   - システムファイル（`/etc/*`, `C:\Windows\*` など）への書き込みを防止
+
+4. **自動ディレクトリ作成**: 指定したパスの親ディレクトリが存在しない場合は自動的に作成されます
 
 **設定例:**
 ```bash
@@ -440,6 +466,34 @@ DEBUG=1 openai-gpt-image-mcp-server
 export OPENAI_IMAGE_OUTPUT_DIR="$HOME/Pictures/ai-generated"
 
 # これで相対パス "myimage.png" は ~/Pictures/ai-generated/myimage.png に保存されます
+```
+
+### 入力画像パスについて（edit_image、transform_image）
+
+入力画像（参照画像・マスク画像）の読み込み元も同様に管理されます：
+
+1. **デフォルトディレクトリ**:
+   - `OPENAI_IMAGE_INPUT_DIR` 環境変数で指定（未指定時は出力ディレクトリと同じ）
+   - デフォルト: `~/Downloads/openai-images`
+
+2. **相対パス指定**:
+   - 例: `photo.png` → `~/Downloads/openai-images/photo.png`
+   - 例: `source/photo.png` → `~/Downloads/openai-images/source/photo.png`
+
+3. **絶対パス指定**:
+   - ベースディレクトリ内に制限されます
+   - 例: `~/Downloads/openai-images/photo.png` ✅
+   - 例: `/tmp/photo.png` ❌（ベースディレクトリ外）
+
+4. **セキュリティ保護**:
+   - パストラバーサル攻撃を防止
+   - 他ユーザーのファイルやシステムファイルへのアクセスを防止
+
+**設定例:**
+```bash
+# 入力画像と出力画像で異なるディレクトリを使用
+export OPENAI_IMAGE_INPUT_DIR="$HOME/Pictures/source-images"
+export OPENAI_IMAGE_OUTPUT_DIR="$HOME/Pictures/generated-images"
 ```
 
 ---
@@ -460,6 +514,43 @@ export OPENAI_IMAGE_OUTPUT_DIR="$HOME/Pictures/ai-generated"
   chmod 600 .env
   chmod 600 config/openai-key.json
   ```
+
+### ファイルアクセスのサンドボックス化
+
+すべてのファイル操作（読み込み・書き込み）は設定されたベースディレクトリ内に制限されます：
+
+**保護される重要ファイル・ディレクトリ:**
+
+- **Unix/Linux/macOS**:
+  - `/etc/*` - システム設定ファイル
+  - `/var/*` - システムログ・データ
+  - `/home/other_user/*` - 他ユーザーのファイル
+  - `/root/*` - rootユーザーディレクトリ
+
+- **Windows**:
+  - `C:\Windows\*` - Windowsシステムファイル
+  - `C:\Program Files\*` - インストール済みプログラム
+  - `C:\Users\OtherUser\*` - 他ユーザーのファイル
+
+**セキュリティ機能:**
+- ✅ パストラバーサル攻撃の防止（`../` の制限）
+- ✅ システムファイルへの意図しないアクセスの防止
+- ✅ 他ユーザーデータの保護
+- ✅ 明確に定義されたディレクトリ内でのみ動作
+
+**ベースディレクトリの変更が必要な場合:**
+```json
+{
+  "mcpServers": {
+    "openai-gpt-image": {
+      "env": {
+        "OPENAI_IMAGE_OUTPUT_DIR": "/path/to/your/output/folder",
+        "OPENAI_IMAGE_INPUT_DIR": "/path/to/your/input/folder"
+      }
+    }
+  }
+}
+```
 
 ### 組織設定
 
@@ -510,21 +601,40 @@ openai-gpt-image-mcp-server --version  # バージョン表示
 
 ---
 
-## 🚀 今後の拡張予定
+## 🚀 実装状況と今後の予定
 
-### Phase 1 (現在)
+### ✅ Phase 1 - 完了
 - ✅ 基本的な画像生成
 - ✅ 画像編集（インペインティング）
 - ✅ 画像変換
 - ✅ コスト管理機能
+- ✅ 複数画像一括生成（sample_count: 1-10）
+- ✅ 型定義の統一
+- ✅ エラーハンドリングの統一
 
-### Phase 2 (予定)
-- 複数画像の一括生成
-- バリエーション生成
+### ✅ Phase 2 - 完了
+- ✅ SQLite履歴データベース
+- ✅ 自動履歴記録機能
+- ✅ 履歴検索・一覧表示（list_history）
+- ✅ 履歴詳細取得（get_history_by_uuid）
+- ✅ UUID ベースの履歴追跡
+
+### ✅ Phase 3 - 完了
+- ✅ PNG/JPEG メタデータ埋め込み
+- ✅ 生成情報の自動埋め込み
+- ✅ プロンプト・パラメータ保存
+
+### ✅ Phase 4 - 完了
+- ✅ 非同期ジョブシステム
+- ✅ バックグラウンド実行
+- ✅ ジョブ状態管理（pending/running/completed/failed/cancelled）
+- ✅ 進捗追跡（0-100%）
+- ✅ ジョブ管理ツール（start/check/get/cancel/list）
+
+### 🔮 今後の拡張アイデア
+- バリエーション生成機能
 - セッション全体のコストサマリー
 - プロンプト最適化ヘルパー
-
-### Phase 3 (検討中)
 - コスト上限アラート
 - 月次レポート生成
 - CSV/JSON エクスポート

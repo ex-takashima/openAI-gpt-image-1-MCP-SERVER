@@ -21,6 +21,14 @@ import { generateImage } from './tools/generate.js';
 import { editImage } from './tools/edit.js';
 import { transformImage } from './tools/transform.js';
 import { listImages } from './tools/list.js';
+import { listHistory, getHistoryByUuid } from './tools/history.js';
+import {
+  startGenerationJob,
+  checkJobStatus,
+  getJobResult,
+  cancelJob,
+  listJobs,
+} from './tools/async-jobs.js';
 import { debugLog } from './utils/cost.js';
 
 // Load environment variables
@@ -99,6 +107,12 @@ const TOOLS = [
           enum: ['auto', 'low'],
           description: 'Content moderation level (default: auto)',
         },
+        sample_count: {
+          type: 'number',
+          description: 'Number of images to generate (1-10, default: 1)',
+          minimum: 1,
+          maximum: 10,
+        },
         return_base64: {
           type: 'boolean',
           description: 'Return base64 image data in response (default: false)',
@@ -160,6 +174,12 @@ const TOOLS = [
           enum: ['auto', 'low'],
           description: 'Content moderation level (default: auto)',
         },
+        sample_count: {
+          type: 'number',
+          description: 'Number of images to generate (1-10, default: 1)',
+          minimum: 1,
+          maximum: 10,
+        },
         return_base64: {
           type: 'boolean',
           description: 'Return base64 image data in response (default: false)',
@@ -213,6 +233,12 @@ const TOOLS = [
           enum: ['auto', 'low'],
           description: 'Content moderation level (default: auto)',
         },
+        sample_count: {
+          type: 'number',
+          description: 'Number of images to generate (1-10, default: 1)',
+          minimum: 1,
+          maximum: 10,
+        },
         return_base64: {
           type: 'boolean',
           description: 'Return base64 image data in response (default: false)',
@@ -232,6 +258,180 @@ const TOOLS = [
         directory: {
           type: 'string',
           description: 'Directory path to search (default: current directory)',
+        },
+      },
+    },
+  },
+  {
+    name: 'list_history',
+    description:
+      'List generation history with optional filters. ' +
+      'Shows recent image generation, editing, and transformation operations with their parameters and output files.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'number',
+          description: 'Maximum number of records to return (1-100, default: 20)',
+          minimum: 1,
+          maximum: 100,
+        },
+        offset: {
+          type: 'number',
+          description: 'Number of records to skip (default: 0)',
+          minimum: 0,
+        },
+        tool_name: {
+          type: 'string',
+          enum: ['generate_image', 'edit_image', 'transform_image'],
+          description: 'Filter by specific tool',
+        },
+        query: {
+          type: 'string',
+          description: 'Search in prompt text',
+        },
+      },
+    },
+  },
+  {
+    name: 'get_history_by_uuid',
+    description:
+      'Get detailed information about a specific generation history record by UUID. ' +
+      'Shows complete parameters, prompt, and all output files.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        uuid: {
+          type: 'string',
+          description: 'History record UUID',
+        },
+      },
+      required: ['uuid'],
+    },
+  },
+  {
+    name: 'start_generation_job',
+    description:
+      'Start an async image generation job that runs in the background. ' +
+      'Use this for long-running operations or when you want to queue multiple generations. ' +
+      'Returns a job ID that can be used to check status and retrieve results.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        tool_name: {
+          type: 'string',
+          enum: ['generate_image', 'edit_image', 'transform_image'],
+          description: 'Which image tool to use',
+        },
+        prompt: {
+          type: 'string',
+          description: 'The generation prompt',
+        },
+        output_path: {
+          type: 'string',
+          description: 'Output file path',
+        },
+        size: {
+          type: 'string',
+          enum: ['1024x1024', '1024x1536', '1536x1024', 'auto'],
+          description: 'Image size',
+        },
+        quality: {
+          type: 'string',
+          enum: ['low', 'medium', 'high', 'auto'],
+          description: 'Image quality',
+        },
+        output_format: {
+          type: 'string',
+          enum: ['png', 'jpeg', 'webp'],
+          description: 'Output format',
+        },
+        sample_count: {
+          type: 'number',
+          description: 'Number of images (1-10)',
+          minimum: 1,
+          maximum: 10,
+        },
+      },
+      required: ['tool_name', 'prompt'],
+    },
+  },
+  {
+    name: 'check_job_status',
+    description:
+      'Check the status of an async job. ' +
+      'Shows current status (pending/running/completed/failed/cancelled) and progress percentage.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        job_id: {
+          type: 'string',
+          description: 'Job ID returned from start_generation_job',
+        },
+      },
+      required: ['job_id'],
+    },
+  },
+  {
+    name: 'get_job_result',
+    description:
+      'Get the result of a completed async job. ' +
+      'Returns output file paths and history UUID. Only works for completed jobs.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        job_id: {
+          type: 'string',
+          description: 'Job ID',
+        },
+      },
+      required: ['job_id'],
+    },
+  },
+  {
+    name: 'cancel_job',
+    description:
+      'Cancel a pending or running async job. ' +
+      'Cannot cancel already completed, failed, or cancelled jobs.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        job_id: {
+          type: 'string',
+          description: 'Job ID to cancel',
+        },
+      },
+      required: ['job_id'],
+    },
+  },
+  {
+    name: 'list_jobs',
+    description:
+      'List async jobs with optional filters. ' +
+      'Shows job status, progress, creation time, and output information.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['pending', 'running', 'completed', 'failed', 'cancelled'],
+          description: 'Filter by status',
+        },
+        tool_name: {
+          type: 'string',
+          enum: ['generate_image', 'edit_image', 'transform_image'],
+          description: 'Filter by tool',
+        },
+        limit: {
+          type: 'number',
+          description: 'Max results (1-100, default: 20)',
+          minimum: 1,
+          maximum: 100,
+        },
+        offset: {
+          type: 'number',
+          description: 'Skip N results',
+          minimum: 0,
         },
       },
     },
@@ -275,6 +475,55 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'list_generated_images': {
         const result = await listImages(args as any);
+        return {
+          content: [{ type: 'text', text: result }],
+        };
+      }
+
+      case 'list_history': {
+        const result = await listHistory(args as any);
+        return {
+          content: [{ type: 'text', text: result }],
+        };
+      }
+
+      case 'get_history_by_uuid': {
+        const result = await getHistoryByUuid(args as any);
+        return {
+          content: [{ type: 'text', text: result }],
+        };
+      }
+
+      case 'start_generation_job': {
+        const result = await startGenerationJob(openai, args as any);
+        return {
+          content: [{ type: 'text', text: result }],
+        };
+      }
+
+      case 'check_job_status': {
+        const result = await checkJobStatus(openai, args as any);
+        return {
+          content: [{ type: 'text', text: result }],
+        };
+      }
+
+      case 'get_job_result': {
+        const result = await getJobResult(openai, args as any);
+        return {
+          content: [{ type: 'text', text: result }],
+        };
+      }
+
+      case 'cancel_job': {
+        const result = await cancelJob(openai, args as any);
+        return {
+          content: [{ type: 'text', text: result }],
+        };
+      }
+
+      case 'list_jobs': {
+        const result = await listJobs(openai, args as any);
         return {
           content: [{ type: 'text', text: result }],
         };

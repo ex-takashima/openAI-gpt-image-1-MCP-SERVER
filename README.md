@@ -10,6 +10,7 @@ A Model Context Protocol (MCP) server that enables image generation and editing 
 
 ## Features
 
+### Core Capabilities
 - 🎨 **High-Quality Image Generation**: State-of-the-art text-to-image generation
 - 📝 **Excellent Text Rendering**: Accurate text rendering within images
 - ✂️ **Precise Image Editing**: Inpainting for targeted modifications
@@ -17,11 +18,17 @@ A Model Context Protocol (MCP) server that enables image generation and editing 
 - 📐 **Flexible Sizing**: Square, portrait, and landscape formats
 - 🎚️ **Quality Control**: Choose from low, medium, or high quality
 - 🖼️ **Multiple Formats**: PNG, JPEG, and WebP support
+- 🌐 **Cross-Platform**: Works on macOS, Windows, and Linux with smart path handling
+
+### Advanced Features (v1.0.3+)
+- 🎲 **Multi-Image Generation**: Generate 1-10 images in a single request
+- 📚 **History Management**: SQLite-based generation history with search
+- ⚡ **Async Job System**: Background processing with progress tracking
+- 🏷️ **Metadata Embedding**: Automatic metadata in PNG/JPEG files
 - 💰 **Cost Management**: Automatic token usage and cost estimation
 - 🛡️ **Content Filtering**: Built-in safety filters
 - 📁 **Image Management**: List and organize generated images
 - 🔧 **Debug Mode**: Detailed logging for troubleshooting
-- 🌐 **Cross-Platform**: Works on macOS, Windows, and Linux with smart path handling
 
 ## Prerequisites
 
@@ -107,7 +114,9 @@ Add to your Claude Desktop configuration file:
 
 **Optional Environment Variables**:
 - `OPENAI_IMAGE_OUTPUT_DIR`: Custom output directory (default: `~/Downloads/openai-images`)
+- `OPENAI_IMAGE_INPUT_DIR`: Custom input directory (default: same as output directory)
 - `OPENAI_ORGANIZATION`: OpenAI organization ID (if you belong to multiple)
+- `HISTORY_DB_PATH`: Custom database location (default: `~/.openai-gpt-image/history.db`)
 - `DEBUG`: Set to `1` for detailed logging
 
 Restart Claude Desktop after saving.
@@ -191,6 +200,25 @@ Transform this photo into an oil painting style
 Generate an illustration of an apple with a transparent background
 ```
 
+### Multi-Image Generation (v1.0.3+)
+
+```
+Generate 5 different variations of a cyberpunk cityscape
+```
+
+### View History (v1.0.3+)
+
+```
+Show me my image generation history from the last week
+```
+
+### Async Jobs (v1.0.3+)
+
+```
+Start a background job to generate 10 high-quality landscape images.
+I want to continue working while it processes.
+```
+
 ## Available Tools
 
 ### 1. `generate_image`
@@ -205,6 +233,7 @@ Generate new images from text prompts.
 - `output_format`: `png`, `jpeg`, or `webp`
 - `transparent_background`: Enable transparency (PNG only)
 - `moderation`: Content filtering level
+- `sample_count`: Number of images to generate (1-10, default: 1)
 - `return_base64`: Return base64-encoded image
 
 ### 2. `edit_image`
@@ -216,6 +245,7 @@ Edit images using inpainting.
 - `reference_image_base64` or `reference_image_path`: Source image
 - `mask_image_base64` or `mask_image_path`: Mask (transparent = edit area)
 - `output_path`: Save location
+- `sample_count`: Number of images to generate (1-10, default: 1)
 - Other parameters same as `generate_image`
 
 ### 3. `transform_image`
@@ -226,6 +256,7 @@ Transform images to new styles.
 - `prompt` (required): Transformation description
 - `reference_image_base64` or `reference_image_path`: Source image
 - `output_path`: Save location
+- `sample_count`: Number of images to generate (1-10, default: 1)
 - Other parameters same as `generate_image`
 
 ### 4. `list_generated_images`
@@ -234,6 +265,155 @@ List images in a directory.
 
 **Parameters**:
 - `directory`: Path to search (default: current directory)
+
+### 5. `list_history`
+
+Browse generation history with optional filters.
+
+**Parameters**:
+- `limit`: Max records (1-100, default: 20)
+- `offset`: Skip N records (pagination)
+- `tool_name`: Filter by tool (`generate_image`, `edit_image`, `transform_image`)
+- `query`: Search in prompts
+
+### 6. `get_history_by_uuid`
+
+Get detailed information about a specific generation.
+
+**Parameters**:
+- `uuid` (required): History record UUID
+
+### 7. `start_generation_job`
+
+Start an async image generation job in the background.
+
+**Parameters**:
+- `tool_name` (required): Which tool to use
+- `prompt` (required): Generation prompt
+- Other parameters same as the respective tool
+
+### 8. `check_job_status`
+
+Check the status of an async job.
+
+**Parameters**:
+- `job_id` (required): Job ID from `start_generation_job`
+
+### 9. `get_job_result`
+
+Get the result of a completed job.
+
+**Parameters**:
+- `job_id` (required): Job ID
+
+### 10. `cancel_job`
+
+Cancel a pending or running job.
+
+**Parameters**:
+- `job_id` (required): Job ID to cancel
+
+### 11. `list_jobs`
+
+List async jobs with optional filters.
+
+**Parameters**:
+- `status`: Filter by status (`pending`, `running`, `completed`, `failed`, `cancelled`)
+- `tool_name`: Filter by tool
+- `limit`: Max results (1-100, default: 20)
+- `offset`: Skip N results
+
+## Advanced Features
+
+### Multi-Image Generation
+
+All generation tools support the `sample_count` parameter to generate multiple images at once:
+
+```
+Generate 5 variations of a cat playing with yarn
+```
+
+- Supported range: 1-10 images per request
+- Files are automatically numbered: `output_1.png`, `output_2.png`, etc.
+- Cost is multiplied by the number of images
+- All files are recorded in history
+
+### History Management
+
+Every generation is automatically saved to a local SQLite database (`~/.openai-gpt-image/history.db`):
+
+**View recent history:**
+```
+Show me the last 10 images I generated
+```
+
+**Search history:**
+```
+Find all images I generated with "sunset" in the prompt
+```
+
+**Get details:**
+```
+Show me the details for this history ID: 8796265a-8dc8-48f4-9b40-fe241985379b
+```
+
+The history includes:
+- Generation timestamp
+- Tool used
+- Prompt and parameters
+- Output file paths
+- Cost information
+
+### Async Job System
+
+For long-running operations or batch processing, use async jobs:
+
+**Start a background job:**
+```
+Start a background job to generate 10 high-quality space images
+```
+
+**Check status:**
+```
+Check the status of job b7912655-0d8e-4ecc-be58-cbc2c4746932
+```
+
+**Get results:**
+```
+Get the results for job b7912655-0d8e-4ecc-be58-cbc2c4746932
+```
+
+**Job statuses:**
+- ⏳ `pending`: Waiting to start
+- 🔄 `running`: Currently processing
+- ✅ `completed`: Finished successfully
+- ❌ `failed`: Error occurred
+- 🚫 `cancelled`: Manually cancelled
+
+### Metadata Embedding
+
+Generated images automatically include embedded metadata:
+
+**PNG files**: tEXt chunks with:
+- `MCP-Tool`: Tool used
+- `MCP-Prompt`: Generation prompt
+- `MCP-Model`: Model name (gpt-image-1)
+- `MCP-Created`: Timestamp
+- `MCP-Size`, `MCP-Quality`, `MCP-Format`
+- `MCP-History-UUID`: Link to history record
+
+**JPEG files**: EXIF UserComment with JSON metadata
+
+**View metadata:**
+```bash
+# macOS/Linux
+exiftool generated_image.png | grep MCP
+
+# Windows (PowerShell)
+exiftool generated_image.png
+```
+
+This allows you to identify how an image was created even after moving it to different locations.
 
 ## Output Path Handling
 
@@ -248,19 +428,24 @@ By default, all images are saved to `~/Downloads/openai-images`:
 
 ### Path Resolution Priority
 
-1. **Absolute paths**: Used as-is
+1. **Absolute paths**: Must be within base directory (security sandboxing)
    ```
-   /Users/username/Desktop/myimage.png  → saved exactly there
-   C:\Users\username\Desktop\myimage.png  → saved exactly there
-   ```
-
-2. **Relative paths**: Resolved from default or custom output directory
-   ```
-   myimage.png  → ~/Downloads/openai-images/myimage.png
-   subfolder/image.png  → ~/Downloads/openai-images/subfolder/image.png
+   ~/Downloads/openai-images/myimage.png → ✅ saved (within base)
+   /tmp/myimage.png → ❌ rejected (outside base)
    ```
 
-3. **Auto-creation**: Parent directories are created automatically
+2. **Relative paths**: Resolved from base directory
+   ```
+   myimage.png → ~/Downloads/openai-images/myimage.png
+   subfolder/image.png → ~/Downloads/openai-images/subfolder/image.png
+   ```
+
+3. **Security**: Path traversal attacks prevented
+   ```
+   ../other/image.png → ❌ rejected (path traversal)
+   ```
+
+4. **Auto-creation**: Parent directories are created automatically
 
 ### Custom Output Directory
 
@@ -280,6 +465,50 @@ Set the `OPENAI_IMAGE_OUTPUT_DIR` environment variable:
 ```
 
 Now `myimage.png` will be saved to `/Users/username/Pictures/ai-images/myimage.png`.
+
+## Input Path Handling
+
+Input images (for `edit_image` and `transform_image`) are also managed with security:
+
+### Default Behavior
+
+- Input directory: Same as output directory by default
+- Can be customized with `OPENAI_IMAGE_INPUT_DIR` environment variable
+
+### Path Resolution
+
+1. **Relative paths**: Resolved from input base directory
+   ```
+   photo.png → ~/Downloads/openai-images/photo.png
+   source/photo.png → ~/Downloads/openai-images/source/photo.png
+   ```
+
+2. **Absolute paths**: Must be within base directory
+   ```
+   ~/Downloads/openai-images/photo.png → ✅ allowed
+   /tmp/photo.png → ❌ rejected (outside base)
+   ```
+
+3. **Security**: Same sandboxing as output paths
+   - Path traversal prevented
+   - System files protected
+   - Other user files protected
+
+### Separate Input/Output Directories
+
+```json
+{
+  "mcpServers": {
+    "openai-gpt-image": {
+      "env": {
+        "OPENAI_API_KEY": "sk-proj-...",
+        "OPENAI_IMAGE_INPUT_DIR": "~/Pictures/source-images",
+        "OPENAI_IMAGE_OUTPUT_DIR": "~/Pictures/generated-images"
+      }
+    }
+  }
+}
+```
 
 ## Cost Management
 
@@ -338,11 +567,40 @@ DEBUG=1 openai-gpt-image-mcp-server
 
 ## Security
 
+### API Key Security
 - Never commit API keys to version control
 - Use environment variables or `.env` files
 - Set file permissions: `chmod 600 .env`
 - Rotate keys regularly
 - Monitor usage at [OpenAI Dashboard](https://platform.openai.com/usage)
+
+### File Access Sandboxing
+
+All file operations (read/write) are restricted to configured base directories:
+
+**Protected system files:**
+- **Unix/Linux/macOS**: `/etc/*`, `/var/*`, `/home/other_user/*`, `/root/*`
+- **Windows**: `C:\Windows\*`, `C:\Program Files\*`, `C:\Users\OtherUser\*`
+
+**Security features:**
+- ✅ Path traversal attack prevention (`../` restrictions)
+- ✅ System file protection
+- ✅ Other user data protection
+- ✅ Operations limited to configured directories only
+
+**To access different directories**, configure base directories:
+```json
+{
+  "mcpServers": {
+    "openai-gpt-image": {
+      "env": {
+        "OPENAI_IMAGE_OUTPUT_DIR": "/path/to/your/output",
+        "OPENAI_IMAGE_INPUT_DIR": "/path/to/your/input"
+      }
+    }
+  }
+}
+```
 
 ## Development
 
