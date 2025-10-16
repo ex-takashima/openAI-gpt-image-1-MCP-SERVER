@@ -107,7 +107,14 @@ Claude Desktop の設定ファイルに以下を追加：
 
 **オプションの環境変数**:
 - `OPENAI_IMAGE_OUTPUT_DIR`: カスタム出力ディレクトリ（デフォルト: `~/Downloads/openai-images`）
+- `OPENAI_IMAGE_INPUT_DIR`: カスタム入力ディレクトリ（デフォルト: 出力ディレクトリと同じ）
+- `OPENAI_IMAGE_EMBED_METADATA`: メタデータ埋め込みの有効化（`true`/`false`、デフォルト: `true`）
+- `OPENAI_IMAGE_METADATA_LEVEL`: メタデータの詳細レベル（`minimal`/`standard`/`full`、デフォルト: `standard`）
+- `OPENAI_IMAGE_THUMBNAIL`: サムネイル生成の有効化（`true`/`false`、デフォルト: `false`）
+- `OPENAI_IMAGE_THUMBNAIL_SIZE`: サムネイルサイズ（ピクセル単位、デフォルト: `128`、範囲: 1-512）
+- `OPENAI_IMAGE_THUMBNAIL_QUALITY`: サムネイルの JPEG 品質（デフォルト: `60`、範囲: 1-100）
 - `OPENAI_ORGANIZATION`: OpenAI 組織 ID（複数組織に所属の場合）
+- `HISTORY_DB_PATH`: カスタムデータベース保存場所（デフォルト: `~/.openai-gpt-image/history.db`）
 - `DEBUG`: `1` を設定すると詳細ログを有効化
 
 設定保存後、Claude Desktop を**完全に再起動**してください。
@@ -235,6 +242,85 @@ Claude Desktop の設定ファイルに以下を追加：
 
 **パラメータ**:
 - `directory`: 検索対象フォルダ（省略時はカレントディレクトリ）
+
+## メタデータの埋め込み
+
+生成された画像には、自動的にメタデータが埋め込まれます：
+
+**PNG ファイル**: tEXt チャンクに以下の情報を格納：
+- `openai_gpt_image_uuid`: 一意の識別子
+- `params_hash`: パラメータの SHA-256 ハッシュ
+- `tool_name`: 使用されたツール（generate_image、edit_image、transform_image）
+- `model`: モデル名（gpt-image-1）
+- `created_at`: ISO 8601 形式のタイムスタンプ
+- `size`: 画像サイズ（例: "1024x1024"）
+- `quality`: 品質レベル（low、medium、high）
+- `prompt`: 生成プロンプト（full レベルのみ）
+- `parameters`: 完全な生成パラメータ（full レベルのみ）
+
+**JPEG/WebP ファイル**: EXIF ImageDescription に JSON 形式でメタデータを格納
+
+**メタデータの確認方法:**
+```bash
+# macOS/Linux
+exiftool generated_image.png | grep openai
+
+# Windows (PowerShell)
+exiftool generated_image.png
+```
+
+これにより、画像を別の場所に移動した後でも、その画像がどのように作成されたかを識別できます。
+
+### メタデータ埋め込みの制御
+
+環境変数を使用してメタデータの埋め込み動作を制御できます：
+
+**メタデータ埋め込みを完全に無効化:**
+```json
+{
+  "mcpServers": {
+    "openai-gpt-image": {
+      "env": {
+        "OPENAI_API_KEY": "sk-proj-...",
+        "OPENAI_IMAGE_EMBED_METADATA": "false"
+      }
+    }
+  }
+}
+```
+
+**メタデータの詳細レベルを変更:**
+```json
+{
+  "mcpServers": {
+    "openai-gpt-image": {
+      "env": {
+        "OPENAI_API_KEY": "sk-proj-...",
+        "OPENAI_IMAGE_METADATA_LEVEL": "minimal"
+      }
+    }
+  }
+}
+```
+
+**メタデータレベルの詳細:**
+
+- **`minimal`**: UUID とパラメータハッシュのみ
+  - 推奨用途: プライバシー重視の場合
+  - サイズ影響: 最小（約 100 バイト）
+  - 含まれる情報: `openai_gpt_image_uuid`、`params_hash`
+
+- **`standard`**（デフォルト）: 基本的な生成情報
+  - 推奨用途: 多くのユースケース、詳細とプライバシーのバランス
+  - サイズ影響: 小（約 300 バイト）
+  - 含まれる情報: minimal の全フィールド + `tool_name`、`model`、`created_at`、`size`、`quality`
+
+- **`full`**: 完全な生成詳細
+  - 推奨用途: 完全なトレーサビリティと再現性
+  - サイズ影響: 中（プロンプトの長さにより変動、通常 500-2000 バイト）
+  - 含まれる情報: standard の全フィールド + `prompt`、`parameters`
+
+**注意**: メタデータの埋め込みは「ベストエフォート」です。埋め込みに失敗した場合でも、画像は保存されます。詳細を確認するには `DEBUG=1` を有効にしてください。
 
 ## 出力パスの処理
 
