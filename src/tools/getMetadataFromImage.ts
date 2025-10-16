@@ -116,8 +116,14 @@ Created: ${historyRecord.created_at}
 `;
 
       // Verify integrity
+      // Reconstruct full params object from DB record for hash verification
       const dbParams = JSON.parse(historyRecord.parameters);
-      const integrity = verifyIntegrity(metadata, dbParams);
+      const fullDbParams = {
+        model: 'gpt-image-1',
+        prompt: historyRecord.prompt,
+        ...dbParams,
+      };
+      const integrity = verifyIntegrity(metadata, fullDbParams);
 
       if (integrity.valid) {
         result += `\n🔐 Integrity Check: ✓ Valid\n${integrity.message}`;

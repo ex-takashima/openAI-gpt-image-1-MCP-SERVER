@@ -51,7 +51,11 @@ export class HistoryDatabase {
         size TEXT,
         quality TEXT,
         output_format TEXT,
-        params_hash TEXT
+        params_hash TEXT,
+        input_tokens INTEGER,
+        output_tokens INTEGER,
+        total_tokens INTEGER,
+        estimated_cost REAL
       );
 
       CREATE INDEX IF NOT EXISTS idx_history_created_at ON history(created_at DESC);
@@ -89,8 +93,9 @@ export class HistoryDatabase {
     const stmt = this.db.prepare(`
       INSERT INTO history (
         uuid, created_at, tool_name, prompt, parameters,
-        output_paths, sample_count, size, quality, output_format, params_hash
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        output_paths, sample_count, size, quality, output_format, params_hash,
+        input_tokens, output_tokens, total_tokens, estimated_cost
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -104,7 +109,11 @@ export class HistoryDatabase {
       params.size || null,
       params.quality || null,
       params.output_format || null,
-      params.params_hash || null
+      params.params_hash || null,
+      params.input_tokens || null,
+      params.output_tokens || null,
+      params.total_tokens || null,
+      params.estimated_cost || null
     );
 
     return uuid;
@@ -206,6 +215,10 @@ export class HistoryDatabase {
       quality: row.quality,
       output_format: row.output_format,
       params_hash: row.params_hash,
+      input_tokens: row.input_tokens,
+      output_tokens: row.output_tokens,
+      total_tokens: row.total_tokens,
+      estimated_cost: row.estimated_cost,
     };
   }
 }

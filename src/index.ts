@@ -478,7 +478,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
-  debugLog(`Tool called: ${name}`, args);
+  // Redact sensitive data from logs
+  const safeArgs = { ...args };
+  if ('reference_image_base64' in safeArgs) {
+    safeArgs.reference_image_base64 = '[REDACTED]';
+  }
+  if ('mask_image_base64' in safeArgs) {
+    safeArgs.mask_image_base64 = '[REDACTED]';
+  }
+  debugLog(`Tool called: ${name}`, safeArgs);
 
   try {
     switch (name) {

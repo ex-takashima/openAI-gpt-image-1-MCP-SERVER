@@ -56,7 +56,13 @@ export async function startGenerationJob(
   openai: OpenAI,
   params: StartGenerationJobParams
 ): Promise<string> {
-  debugLog('Start generation job called with params:', params);
+  // Redact sensitive data from logs
+  const { reference_image_base64, mask_image_base64, ...safeParams } = params;
+  debugLog('Start generation job called with params:', {
+    ...safeParams,
+    reference_image_base64: reference_image_base64 ? '[REDACTED]' : undefined,
+    mask_image_base64: mask_image_base64 ? '[REDACTED]' : undefined,
+  });
 
   const { tool_name, prompt, ...toolParams } = params;
 

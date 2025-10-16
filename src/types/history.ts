@@ -17,6 +17,10 @@ export interface HistoryRecord {
   quality?: string;
   output_format?: string;
   params_hash?: string; // SHA-256 hash of parameters
+  input_tokens?: number;
+  output_tokens?: number;
+  total_tokens?: number;
+  estimated_cost?: number; // USD
 }
 
 /**
@@ -33,6 +37,10 @@ export interface CreateHistoryParams {
   quality?: string;
   output_format?: string;
   params_hash?: string; // SHA-256 hash of parameters
+  input_tokens?: number;
+  output_tokens?: number;
+  total_tokens?: number;
+  estimated_cost?: number; // USD
 }
 
 /**

@@ -239,6 +239,9 @@ export async function transformImage(
       format: output_format,
     });
 
+    // Calculate total tokens
+    const totalTokens = inputTokens + outputTokens;
+
     // Save to history database (use the same UUID)
     const db = getDatabase();
     const historyUuid = db.createRecord({
@@ -258,6 +261,10 @@ export async function transformImage(
       quality: actualQuality,
       output_format,
       params_hash: paramsHash, // Add params hash for integrity verification
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      total_tokens: totalTokens,
+      estimated_cost: cost.totalCost,
     });
 
     debugLog(`History record created: ${historyUuid}`);
