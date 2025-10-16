@@ -80,6 +80,32 @@ export class HistoryDatabase {
       CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON jobs(created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_jobs_tool_name ON jobs(tool_name);
     `);
+
+    // Migrate existing database to add cost tracking columns
+    this.migrateAddCostTracking();
+  }
+
+  /**
+   * Migration: Add cost tracking columns to existing history table
+   */
+  private migrateAddCostTracking(): void {
+    // Get existing columns
+    const columns = this.db.pragma('table_info(history)') as Array<{ name: string }>;
+    const columnNames = columns.map(col => col.name);
+
+    // Add missing columns
+    if (!columnNames.includes('input_tokens')) {
+      this.db.exec('ALTER TABLE history ADD COLUMN input_tokens INTEGER');
+    }
+    if (!columnNames.includes('output_tokens')) {
+      this.db.exec('ALTER TABLE history ADD COLUMN output_tokens INTEGER');
+    }
+    if (!columnNames.includes('total_tokens')) {
+      this.db.exec('ALTER TABLE history ADD COLUMN total_tokens INTEGER');
+    }
+    if (!columnNames.includes('estimated_cost')) {
+      this.db.exec('ALTER TABLE history ADD COLUMN estimated_cost REAL');
+    }
   }
 
   /**
