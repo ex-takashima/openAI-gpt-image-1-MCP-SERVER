@@ -115,6 +115,8 @@ Add to your Claude Desktop configuration file:
 **Optional Environment Variables**:
 - `OPENAI_IMAGE_OUTPUT_DIR`: Custom output directory (default: `~/Downloads/openai-images`)
 - `OPENAI_IMAGE_INPUT_DIR`: Custom input directory (default: same as output directory)
+- `OPENAI_IMAGE_EMBED_METADATA`: Enable metadata embedding (`true`/`false`, default: `true`)
+- `OPENAI_IMAGE_METADATA_LEVEL`: Metadata detail level (`minimal`/`standard`/`full`, default: `standard`)
 - `OPENAI_IMAGE_THUMBNAIL`: Enable thumbnail generation (`true`/`false`, default: `false`)
 - `OPENAI_IMAGE_THUMBNAIL_SIZE`: Thumbnail size in pixels (default: `128`, range: 1-512)
 - `OPENAI_IMAGE_THUMBNAIL_QUALITY`: Thumbnail JPEG quality (default: `60`, range: 1-100)
@@ -398,25 +400,79 @@ Get the results for job b7912655-0d8e-4ecc-be58-cbc2c4746932
 Generated images automatically include embedded metadata:
 
 **PNG files**: tEXt chunks with:
-- `MCP-Tool`: Tool used
-- `MCP-Prompt`: Generation prompt
-- `MCP-Model`: Model name (gpt-image-1)
-- `MCP-Created`: Timestamp
-- `MCP-Size`, `MCP-Quality`, `MCP-Format`
-- `MCP-History-UUID`: Link to history record
+- `openai_gpt_image_uuid`: Unique identifier
+- `params_hash`: SHA-256 hash of parameters
+- `tool_name`: Tool used (generate_image, edit_image, transform_image)
+- `model`: Model name (gpt-image-1)
+- `created_at`: ISO 8601 timestamp
+- `size`: Image dimensions (e.g., "1024x1024")
+- `quality`: Quality level (low, medium, high)
+- `prompt`: Generation prompt (full level only)
+- `parameters`: Complete generation parameters (full level only)
 
-**JPEG files**: EXIF UserComment with JSON metadata
+**JPEG/WebP files**: EXIF ImageDescription with JSON metadata
 
 **View metadata:**
 ```bash
 # macOS/Linux
-exiftool generated_image.png | grep MCP
+exiftool generated_image.png | grep openai
 
 # Windows (PowerShell)
 exiftool generated_image.png
 ```
 
 This allows you to identify how an image was created even after moving it to different locations.
+
+#### Controlling Metadata Embedding
+
+You can control metadata embedding behavior using environment variables:
+
+**Disable metadata embedding entirely:**
+```json
+{
+  "mcpServers": {
+    "openai-gpt-image": {
+      "env": {
+        "OPENAI_API_KEY": "sk-proj-...",
+        "OPENAI_IMAGE_EMBED_METADATA": "false"
+      }
+    }
+  }
+}
+```
+
+**Change metadata detail level:**
+```json
+{
+  "mcpServers": {
+    "openai-gpt-image": {
+      "env": {
+        "OPENAI_API_KEY": "sk-proj-...",
+        "OPENAI_IMAGE_METADATA_LEVEL": "minimal"
+      }
+    }
+  }
+}
+```
+
+**Metadata levels:**
+
+- **`minimal`**: UUID and parameter hash only
+  - Best for: Privacy-focused use cases
+  - Size impact: Minimal (~100 bytes)
+  - Contains: `openai_gpt_image_uuid`, `params_hash`
+
+- **`standard`** (default): Basic generation information
+  - Best for: Most use cases, balances detail and privacy
+  - Size impact: Small (~300 bytes)
+  - Contains: All minimal fields + `tool_name`, `model`, `created_at`, `size`, `quality`
+
+- **`full`**: Complete generation details
+  - Best for: Full traceability and reproducibility
+  - Size impact: Medium (varies by prompt length, typically 500-2000 bytes)
+  - Contains: All standard fields + `prompt`, `parameters`
+
+**Note**: Metadata embedding is "best effort" - if embedding fails, the image is still saved without metadata. Enable `DEBUG=1` to see metadata embedding details.
 
 ## Output Path Handling
 
