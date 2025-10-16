@@ -6,7 +6,7 @@ import OpenAI from 'openai';
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { saveBase64Image, validateImageFormat, validateImageSize, validateQuality } from '../utils/image.js';
 import { calculateCost, formatCostBreakdown, debugLog } from '../utils/cost.js';
-import { normalizeAndValidatePath, getDisplayPath } from '../utils/path.js';
+import { normalizeAndValidatePath, getDisplayPath, generateUniqueFilePath } from '../utils/path.js';
 import { getDatabase } from '../utils/database.js';
 import { saveImageWithMetadata, generateImageUUID, calculateParamsHash, buildMetadataObject } from '../utils/metadata.js';
 import { generateThumbnailDataFromFile, createThumbnailContent, isThumbnailEnabled } from '../utils/thumbnail.js';
@@ -32,7 +32,10 @@ export async function generateImage(
   } = params;
 
   // Normalize and validate output path (cross-platform)
-  const normalizedPath = await normalizeAndValidatePath(output_path);
+  let normalizedPath = await normalizeAndValidatePath(output_path);
+
+  // Generate unique file path to avoid overwriting existing files
+  normalizedPath = await generateUniqueFilePath(normalizedPath);
 
   // Validation
   if (!prompt || prompt.trim().length === 0) {

@@ -183,3 +183,51 @@ export function getDisplayPath(absolutePath: string): string {
   }
   return absolutePath;
 }
+
+/**
+ * Generate unique file path by adding numbers if file exists
+ *
+ * Examples:
+ * - "image.png" exists -> returns "image_1.png"
+ * - "image_1.png" exists -> returns "image_2.png"
+ * - "image.png" doesn't exist -> returns "image.png"
+ *
+ * @param filePath - Original file path
+ * @returns Unique file path (may have number suffix)
+ */
+export async function generateUniqueFilePath(filePath: string): Promise<string> {
+  try {
+    await fs.access(filePath);
+    // File exists, need to add number
+  } catch {
+    // File doesn't exist, can use original path
+    debugLog(`File doesn't exist, using original path: ${filePath}`);
+    return filePath;
+  }
+
+  // File exists, find available number
+  const dir = path.dirname(filePath);
+  const ext = path.extname(filePath);
+  const baseName = path.basename(filePath, ext);
+
+  let counter = 1;
+  let uniquePath: string;
+
+  while (true) {
+    uniquePath = path.join(dir, `${baseName}_${counter}${ext}`);
+    try {
+      await fs.access(uniquePath);
+      // This path also exists, try next number
+      counter++;
+    } catch {
+      // Found available path
+      debugLog(`Generated unique path: ${uniquePath}`);
+      return uniquePath;
+    }
+
+    // Safety limit to prevent infinite loop
+    if (counter > 9999) {
+      throw new Error(`Failed to generate unique filename after 9999 attempts for: ${filePath}`);
+    }
+  }
+}

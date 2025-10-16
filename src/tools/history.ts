@@ -101,6 +101,15 @@ export async function listHistory(params: ListHistoryParams): Promise<string> {
         result += '\n';
       }
 
+      // Show cost information if available
+      if (record.estimated_cost !== null && record.estimated_cost !== undefined) {
+        result += `   💰 Cost: $${record.estimated_cost.toFixed(3)}`;
+        if (record.total_tokens) {
+          result += ` (${record.total_tokens.toLocaleString()} tokens)`;
+        }
+        result += '\n';
+      }
+
       // Show first output path
       if (outputPaths.length > 0) {
         result += `   Output: ${getDisplayPath(outputPaths[0])}`;
@@ -189,6 +198,22 @@ export async function getHistoryByUuid(params: GetHistoryByUuidParams): Promise<
       if (record.size) result += `   Size: ${record.size}\n`;
       if (record.quality) result += `   Quality: ${record.quality}\n`;
       if (record.output_format) result += `   Format: ${record.output_format}\n`;
+    }
+
+    // Cost information
+    if (record.estimated_cost !== null && record.estimated_cost !== undefined) {
+      result += '\n💰 Cost Information:\n';
+      result += `   Estimated cost: $${record.estimated_cost.toFixed(3)}\n`;
+
+      if (record.input_tokens) {
+        result += `   Input tokens: ${record.input_tokens.toLocaleString()}\n`;
+      }
+      if (record.output_tokens) {
+        result += `   Output tokens: ${record.output_tokens.toLocaleString()}\n`;
+      }
+      if (record.total_tokens) {
+        result += `   Total tokens: ${record.total_tokens.toLocaleString()}\n`;
+      }
     }
 
     // Output files

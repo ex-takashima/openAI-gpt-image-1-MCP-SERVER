@@ -9,7 +9,7 @@ import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { imageFileToBase64, saveBase64Image, validateImageFormat, validateImageSize, validateQuality } from '../utils/image.js';
 import { calculateCost, formatCostBreakdown, debugLog } from '../utils/cost.js';
 import { getMimeTypeFromPath } from '../utils/mime.js';
-import { normalizeAndValidatePath, getDisplayPath, normalizeInputPath } from '../utils/path.js';
+import { normalizeAndValidatePath, getDisplayPath, normalizeInputPath, generateUniqueFilePath } from '../utils/path.js';
 import { getDatabase } from '../utils/database.js';
 import { saveImageWithMetadata, generateImageUUID, calculateParamsHash, buildMetadataObject } from '../utils/metadata.js';
 import { generateThumbnailDataFromFile, createThumbnailContent, isThumbnailEnabled } from '../utils/thumbnail.js';
@@ -36,7 +36,10 @@ export async function transformImage(
   } = params;
 
   // Normalize and validate output path (cross-platform)
-  const normalizedPath = await normalizeAndValidatePath(output_path);
+  let normalizedPath = await normalizeAndValidatePath(output_path);
+
+  // Generate unique file path to avoid overwriting existing files
+  normalizedPath = await generateUniqueFilePath(normalizedPath);
 
   // Validation
   if (!prompt || prompt.trim().length === 0) {
