@@ -5,6 +5,52 @@ All notable changes to the OpenAI GPT-Image-1 MCP Server will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2025-10-17
+
+### Added
+- Tilde (~) expansion support for environment variable paths
+  - `OPENAI_IMAGE_OUTPUT_DIR` now supports `~/Pictures/ai-images` format
+  - `OPENAI_IMAGE_INPUT_DIR` now supports tilde expansion
+  - `HISTORY_DB_PATH` now supports tilde expansion
+- Comprehensive `.env.example` with all documented environment variables
+  - Added metadata embedding controls
+  - Added thumbnail configuration
+  - Added path configuration with examples
+  - Clear descriptions for all options
+
+### Changed
+- Updated README.md with complete metadata embedding documentation
+  - Added `OPENAI_IMAGE_EMBED_METADATA` environment variable documentation
+  - Added `OPENAI_IMAGE_METADATA_LEVEL` environment variable documentation
+  - Expanded metadata field descriptions with proper naming
+  - Added size impact information for each metadata level
+- Updated README.ja.md (Japanese) with same metadata documentation
+- Enhanced CODING_CONVENTIONS.md
+  - Added comprehensive Test conventions section
+  - Added Security best practices section
+  - Added Git/Version control guidelines
+  - Updated checklist with security and testing items
+- Fixed version consistency in `src/index.ts` (now matches package.json)
+
+### Fixed
+- Path resolution issues when using tilde (~) in environment variables
+- Windows path resolution errors with home directory expansion
+- "Security error: Access denied" when using `~` in configuration
+
+### Documentation
+- Updated both English and Japanese READMEs with:
+  - Complete environment variable documentation
+  - Metadata embedding control instructions
+  - Three metadata levels (minimal/standard/full) explained
+  - Tilde expansion usage examples
+- Removed duplicate `README_ja.md` file (kept standard `README.ja.md`)
+- Corrected project name in CODING_CONVENTIONS.md
+
+### Technical
+- Added `expandTilde()` helper function in `src/utils/path.ts`
+- Improved path resolution in `getDefaultOutputDirectory()` and `getDefaultInputDirectory()`
+- Zero breaking changes - fully backward compatible
+
 ## [1.0.3] - 2025-10-16
 
 ### Added

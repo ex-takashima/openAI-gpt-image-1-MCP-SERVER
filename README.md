@@ -594,7 +594,9 @@ Example output:
 📏 Parameters: high quality | 1024x1024 | png
 ```
 
-### Pricing (as of October 2025)
+### Pricing Examples
+
+The following costs are approximate estimates. **Actual pricing may vary**.
 
 | Size | Quality | Approx. Cost |
 |------|---------|--------------|
@@ -602,7 +604,7 @@ Example output:
 | 1024x1024 | medium | $0.04-0.07 |
 | 1024x1024 | high | $0.17-0.19 |
 
-> See [OpenAI Pricing](https://openai.com/api/pricing/) for current rates.
+> **Important**: See [OpenAI Pricing](https://openai.com/api/pricing/) for current official rates.
 
 ## Troubleshooting
 

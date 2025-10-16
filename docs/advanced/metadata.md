@@ -24,15 +24,15 @@
 
 | 環境変数 | 説明 | デフォルト値 | 設定値 |
 |---------|------|------------|--------|
-| `VERTEXAI_IMAGEN_EMBED_METADATA` | メタデータ埋め込みを有効化 | `true` | `true`, `false`, `0` |
-| `VERTEXAI_IMAGEN_METADATA_LEVEL` | 埋め込むメタデータの詳細度 | `standard` | `minimal`, `standard`, `full` |
+| `OPENAI_IMAGE_EMBED_METADATA` | メタデータ埋め込みを有効化 | `true` | `true`, `false`, `0` |
+| `OPENAI_IMAGE_METADATA_LEVEL` | 埋め込むメタデータの詳細度 | `standard` | `minimal`, `standard`, `full` |
 
 ### メタデータレベルの詳細
 
 #### 1. minimal（最小限）
 
 **埋め込まれる情報**:
-- `vertexai_imagen_uuid`: 画像の一意なUUID
+- `openai_gpt_image_uuid`: 画像の一意なUUID
 - `params_hash`: パラメータのSHA-256ハッシュ
 
 **使用ケース**:
@@ -180,7 +180,7 @@ Sharpの `.withMetadata()` メソッドは主に**EXIFメタデータ**（JPEG/W
 - **Sharp**: 高レベル画像処理ライブラリ → EXIF操作は得意
 - **png-chunks-***: 低レベルPNG操作ライブラリ → チャンクレベルの操作が可能
 
-PNGのtEXtチャンクに独自のキーワード（`vertexai_imagen_metadata`）でメタデータを埋め込むには、バイナリレベルでのチャンク操作が必要なため、専用ライブラリを使用しています。
+PNGのtEXtチャンクに独自のキーワード（`openai_gpt_image_metadata`）でメタデータを埋め込むには、バイナリレベルでのチャンク操作が必要なため、専用ライブラリを使用しています。
 
 **処理**:
 
@@ -189,7 +189,7 @@ PNGのtEXtチャンクに独自のキーワード（`vertexai_imagen_metadata`�
 const chunks = extract(imageBuffer);
 
 // 2. tEXtチャンクを作成
-const textChunk = text.encode('vertexai_imagen_metadata', metadataJson);
+const textChunk = text.encode('openai_gpt_image_metadata', metadataJson);
 
 // 3. IENDチャンクの前に挿入（PNGの仕様）
 const iendIndex = chunks.findIndex(chunk => chunk.name === 'IEND');
@@ -206,7 +206,7 @@ PNG Signature
 IHDR (ヘッダ)
 ...その他のチャンク...
 tEXt (← ここにメタデータを挿入)
-  - Keyword: "vertexai_imagen_metadata"
+  - Keyword: "openai_gpt_image_metadata"
   - Text: JSON文字列
 IEND (終端、必ず最後)
 ```
@@ -225,7 +225,7 @@ IEND (終端、必ず最後)
 
 3. **キーワードの制約**:
    - キーワードは79文字以内でなければならない
-   - 現在は "vertexai_imagen_metadata" (25文字) を使用
+   - 現在は "openai_gpt_image_metadata" (24文字) を使用
 
 **回避策**:
 
@@ -277,10 +277,10 @@ return await image
 const fileBuffer = await fs.readFile(imagePath);
 const chunks = extract(fileBuffer);
 
-// vertexai_imagen_metadataチャンクを探す
+// openai_gpt_image_metadataチャンクを探す
 const metadataChunk = chunks.find(
   chunk => chunk.name === 'tEXt' &&
-  text.decode(chunk.data).keyword === 'vertexai_imagen_metadata'
+  text.decode(chunk.data).keyword === 'openai_gpt_image_metadata'
 );
 
 if (metadataChunk) {
@@ -299,8 +299,8 @@ if (metadata.exif) {
   const exifBuffer = metadata.exif;
   const exifString = exifBuffer.toString('utf8', 0, Math.min(exifBuffer.length, 10000));
 
-  // JSON文字列を探す（vertexai_imagen_uuidを含む）
-  const jsonMatch = exifString.match(/\{[^{}]*vertexai_imagen_uuid[^{}]*\}/);
+  // JSON文字列を探す（openai_gpt_image_uuidを含む）
+  const jsonMatch = exifString.match(/\{[^{}]*openai_gpt_image_uuid[^{}]*\}/);
 
   if (jsonMatch) {
     const extractedMetadata = JSON.parse(jsonMatch[0]);
@@ -352,7 +352,7 @@ export function verifyIntegrity(
 ```typescript
 export interface ImageMetadata {
   // 必須（全レベル共通）
-  vertexai_imagen_uuid: string;
+  openai_gpt_image_uuid: string;
   params_hash: string;
 
   // standard レベル以上
@@ -374,7 +374,7 @@ export interface ImageMetadata {
 
 ```json
 {
-  "vertexai_imagen_uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "openai_gpt_image_uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
   "params_hash": "a3c65f7b89def2..."
 }
 ```
@@ -383,13 +383,13 @@ export interface ImageMetadata {
 
 ```json
 {
-  "vertexai_imagen_uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "openai_gpt_image_uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
   "params_hash": "a3c65f7b89def2...",
   "tool_name": "generate_image",
-  "model": "imagen-3.0-generate-002",
+  "model": "gpt-image-1",
   "created_at": "2024-01-15T10:30:00.000Z",
-  "aspect_ratio": "16:9",
-  "sample_image_size": "1K"
+  "aspect_ratio": "1:1",
+  "sample_image_size": "1024x1024"
 }
 ```
 
@@ -397,23 +397,21 @@ export interface ImageMetadata {
 
 ```json
 {
-  "vertexai_imagen_uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "openai_gpt_image_uuid": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
   "params_hash": "a3c65f7b89def2...",
   "tool_name": "generate_image",
-  "model": "imagen-3.0-generate-002",
+  "model": "gpt-image-1",
   "created_at": "2024-01-15T10:30:00.000Z",
-  "aspect_ratio": "16:9",
-  "sample_image_size": "1K",
+  "aspect_ratio": "1:1",
+  "sample_image_size": "1024x1024",
   "prompt": "A beautiful sunset over the ocean",
   "parameters": {
     "prompt": "A beautiful sunset over the ocean",
-    "model": "imagen-3.0-generate-002",
-    "aspect_ratio": "16:9",
-    "safety_level": "BLOCK_MEDIUM_AND_ABOVE",
-    "person_generation": "DONT_ALLOW",
-    "language": "auto",
-    "sample_count": 1,
-    "sample_image_size": "1K"
+    "model": "gpt-image-1",
+    "size": "1024x1024",
+    "quality": "high",
+    "output_format": "png",
+    "sample_count": 1
   }
 }
 ```
@@ -429,7 +427,7 @@ const metadataEmbeddingEnabled = isMetadataEmbeddingEnabled();
 
 if (metadataEmbeddingEnabled) {
   const metadata: ImageMetadata = {
-    vertexai_imagen_uuid: uuid,
+    openai_gpt_image_uuid: uuid,
     params_hash: paramsHash,
     tool_name: 'generate_image',
     model,
@@ -557,7 +555,7 @@ if (!metadata) {
 ### UUIDによる紐付け
 
 ```
-画像ファイル (metadata.vertexai_imagen_uuid)
+画像ファイル (metadata.openai_gpt_image_uuid)
     ↓
 データベース (image_history.uuid)
 ```
@@ -568,7 +566,7 @@ if (!metadata) {
 
 ```typescript
 const imageMetadata = await extractMetadataFromImage(imagePath);
-const dbRecord = historyDb.getImageHistory(imageMetadata.vertexai_imagen_uuid);
+const dbRecord = historyDb.getImageHistory(imageMetadata.openai_gpt_image_uuid);
 
 if (dbRecord) {
   const paramsMatch = dbRecord.paramsHash === imageMetadata.params_hash;
@@ -607,14 +605,12 @@ if (dbRecord) {
 ```json
 {
   "mcpServers": {
-    "vertexai-imagen": {
-      "command": "node",
-      "args": ["/path/to/build/index.js"],
+    "openai-gpt-image": {
+      "command": "openai-gpt-image-mcp-server",
       "env": {
-        "GOOGLE_API_KEY": "...",
-        "GOOGLE_PROJECT_ID": "...",
-        "VERTEXAI_IMAGEN_EMBED_METADATA": "true",
-        "VERTEXAI_IMAGEN_METADATA_LEVEL": "standard"
+        "OPENAI_API_KEY": "sk-proj-...",
+        "OPENAI_IMAGE_EMBED_METADATA": "true",
+        "OPENAI_IMAGE_METADATA_LEVEL": "standard"
       }
     }
   }
@@ -640,7 +636,7 @@ const historyResult = await mcp.callTool('get_history_by_uuid', {
 ```typescript
 // 画像とデータベースの整合性を確認
 const metadata = await extractMetadataFromImage(imagePath);
-const dbRecord = historyDb.getImageHistory(metadata.vertexai_imagen_uuid);
+const dbRecord = historyDb.getImageHistory(metadata.openai_gpt_image_uuid);
 const integrity = verifyIntegrity(metadata, JSON.parse(dbRecord.parameters));
 
 if (integrity.valid) {
@@ -715,7 +711,7 @@ if (integrity.valid) {
 ### メタデータが埋め込まれない
 
 **確認事項**:
-1. `VERTEXAI_IMAGEN_EMBED_METADATA` が `false` または `0` でないか
+1. `OPENAI_IMAGE_EMBED_METADATA` が `false` または `0` でないか
 2. 画像フォーマットがサポートされているか（PNG, JPEG, WebP）
 3. DEBUGモードでエラーメッセージを確認
 
@@ -741,7 +737,7 @@ if (integrity.valid) {
 
 1. **メタデータレベルを下げる**（推奨）:
    ```bash
-   VERTEXAI_IMAGEN_METADATA_LEVEL=standard
+   OPENAI_IMAGE_METADATA_LEVEL=standard
    ```
    standardレベルではプロンプトを埋め込まないため、通常は問題が起きません
 

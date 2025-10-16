@@ -12,9 +12,9 @@
 
 | 環境変数 | 説明 | デフォルト値 | 範囲 |
 |---------|------|------------|------|
-| `VERTEXAI_IMAGEN_THUMBNAIL` | サムネイル生成を有効化 | `false` | `true` / `false` |
-| `VERTEXAI_IMAGEN_THUMBNAIL_SIZE` | サムネイルサイズ（ピクセル） | `128` | `1` - `512` |
-| `VERTEXAI_IMAGEN_THUMBNAIL_QUALITY` | JPEG品質 | `60` | `1` - `100` |
+| `OPENAI_IMAGE_THUMBNAIL` | サムネイル生成を有効化 | `false` | `true` / `false` |
+| `OPENAI_IMAGE_THUMBNAIL_SIZE` | サムネイルサイズ（ピクセル） | `128` | `1` - `512` |
+| `OPENAI_IMAGE_THUMBNAIL_QUALITY` | JPEG品質 | `60` | `1` - `100` |
 
 ### ツールパラメータ
 
@@ -98,9 +98,9 @@ export async function generateThumbnailDataFromFile(
 
 ```typescript
 export interface ThumbnailConfig {
-  maxWidth: number;    // 環境変数 VERTEXAI_IMAGEN_THUMBNAIL_SIZE
-  maxHeight: number;   // 環境変数 VERTEXAI_IMAGEN_THUMBNAIL_SIZE
-  quality: number;     // 環境変数 VERTEXAI_IMAGEN_THUMBNAIL_QUALITY
+  maxWidth: number;    // 環境変数 OPENAI_IMAGE_THUMBNAIL_SIZE
+  maxHeight: number;   // 環境変数 OPENAI_IMAGE_THUMBNAIL_SIZE
+  quality: number;     // 環境変数 OPENAI_IMAGE_THUMBNAIL_QUALITY
   format: 'jpeg' | 'png' | 'webp';  // デフォルト: 'jpeg'
 }
 ```
@@ -173,7 +173,7 @@ export async function createMultiUriImageResponse(
 const shouldIncludeThumbnail =
   include_thumbnail !== undefined
     ? include_thumbnail  // パラメータ指定があれば優先
-    : process.env.VERTEXAI_IMAGEN_THUMBNAIL === 'true'; // 環境変数
+    : process.env.OPENAI_IMAGE_THUMBNAIL === 'true'; // 環境変数
 ```
 
 **単一画像の場合**:
@@ -279,7 +279,7 @@ try {
 または無効化時：
 
 ```bash
-[DEBUG] Thumbnail generation disabled (VERTEXAI_IMAGEN_THUMBNAIL=)
+[DEBUG] Thumbnail generation disabled (OPENAI_IMAGE_THUMBNAIL=)
 ```
 
 ## 使用例
@@ -289,15 +289,13 @@ try {
 ```json
 {
   "mcpServers": {
-    "vertexai-imagen": {
-      "command": "node",
-      "args": ["/path/to/build/index.js"],
+    "openai-gpt-image": {
+      "command": "openai-gpt-image-mcp-server",
       "env": {
-        "GOOGLE_API_KEY": "...",
-        "GOOGLE_PROJECT_ID": "...",
-        "VERTEXAI_IMAGEN_THUMBNAIL": "true",
-        "VERTEXAI_IMAGEN_THUMBNAIL_SIZE": "128",
-        "VERTEXAI_IMAGEN_THUMBNAIL_QUALITY": "60"
+        "OPENAI_API_KEY": "sk-proj-...",
+        "OPENAI_IMAGE_THUMBNAIL": "true",
+        "OPENAI_IMAGE_THUMBNAIL_SIZE": "128",
+        "OPENAI_IMAGE_THUMBNAIL_QUALITY": "60"
       }
     }
   }
