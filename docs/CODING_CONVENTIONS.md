@@ -1,6 +1,6 @@
 # コーディング規約
 
-このドキュメントは、vertexai-imagen-mcp-server プロジェクトで使用されるコーディング規約をまとめたものです。
+このドキュメントは、openai-gpt-image-mcp-server プロジェクトで使用されるコーディング規約をまとめたものです。
 
 ## 目次
 
@@ -14,6 +14,9 @@
 8. [インポート規則](#インポート規則)
 9. [非同期処理](#非同期処理)
 10. [デバッグとログ](#デバッグとログ)
+11. [テスト規約](#テスト規約)
+12. [セキュリティ](#セキュリティ)
+13. [Git/バージョン管理](#gitバージョン管理)
 
 ---
 
@@ -550,18 +553,368 @@ export class JobDatabase {
 
 ---
 
+## テスト規約
+
+### テストファイルの命名
+
+```
+tests/
+├── unit/              # ユニットテスト
+│   ├── utils.test.ts
+│   └── metadata.test.ts
+└── integration/       # 統合テスト
+    └── generateImage.integration.test.ts
+```
+
+- **`*.test.ts`**: ユニットテスト（個別の関数・クラスをテスト）
+- **`*.integration.test.ts`**: 統合テスト（複数のモジュールや外部APIの連携をテスト）
+
+### テスト構造
+
+**AAA パターン（Arrange-Act-Assert）** を使用します。
+
+```typescript
+// ✅ Good
+describe('normalizeAndValidatePath', () => {
+  it('should normalize relative path to absolute path', async () => {
+    // Arrange (準備)
+    const relativePath = 'test.png';
+    const expectedBase = getDefaultOutputDirectory();
+
+    // Act (実行)
+    const result = await normalizeAndValidatePath(relativePath);
+
+    // Assert (検証)
+    expect(result).toContain(expectedBase);
+    expect(path.isAbsolute(result)).toBe(true);
+  });
+});
+```
+
+### モックの使用
+
+外部依存（API、ファイルシステム）はモック化します。
+
+```typescript
+// ✅ Good
+import { jest } from '@jest/globals';
+
+describe('generateImage', () => {
+  beforeEach(() => {
+    // OpenAI API をモック化
+    jest.spyOn(openai.images, 'generate').mockResolvedValue({
+      data: [{ b64_json: 'mock_base64_data' }]
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('should generate image successfully', async () => {
+    // ...
+  });
+});
+```
+
+### テストカバレッジ目標
+
+| カテゴリ | 目標カバレッジ |
+|---------|--------------|
+| ユーティリティ関数（utils/） | 80%以上 |
+| ツール実装（tools/） | 70%以上 |
+| 型定義（types/） | N/A（ランタイムなし） |
+
+### テスト実行コマンド
+
+```bash
+# 全テスト実行
+npm test
+
+# カバレッジ付き実行
+npm run test:coverage
+
+# 特定のファイルのみ
+npm test -- path.test.ts
+
+# Watch モード
+npm test -- --watch
+```
+
+### エラーケースのテスト
+
+正常系だけでなく、エラーケースも必ずテストします。
+
+```typescript
+// ✅ Good
+it('should throw error when path is outside base directory', async () => {
+  const maliciousPath = '../../../etc/passwd';
+
+  await expect(normalizeAndValidatePath(maliciousPath))
+    .rejects
+    .toThrow('Security error: Access denied');
+});
+
+it('should throw McpError with InvalidParams code', async () => {
+  const args = { prompt: '' }; // 空のプロンプト
+
+  await expect(generateImage(openai, args))
+    .rejects
+    .toThrow(McpError);
+});
+```
+
+---
+
+## セキュリティ
+
+### APIキー管理
+
+APIキーは環境変数から読み取り、コードにハードコードしません。
+
+```typescript
+// ✅ Good
+const apiKey = process.env.OPENAI_API_KEY;
+if (!apiKey) {
+  console.error('Error: OPENAI_API_KEY environment variable is required.');
+  process.exit(1);
+}
+
+// ❌ Bad
+const apiKey = 'sk-proj-1234567890abcdef'; // ハードコード禁止
+```
+
+### 機密情報のログ出力禁止
+
+APIキー、トークン、Base64画像データはログに出力しません。
+
+```typescript
+// ✅ Good
+const safeArgs = { ...args };
+if ('reference_image_base64' in safeArgs) {
+  safeArgs.reference_image_base64 = '[REDACTED]';
+}
+if ('mask_image_base64' in safeArgs) {
+  safeArgs.mask_image_base64 = '[REDACTED]';
+}
+debugLog(`Tool called: ${name}`, safeArgs);
+
+// ❌ Bad
+debugLog(`Tool called: ${name}`, args); // Base64データがログに出力される
+```
+
+### 入力検証
+
+ユーザー入力は常に検証し、適切なエラーメッセージを返します。
+
+```typescript
+// ✅ Good
+if (!prompt || typeof prompt !== 'string') {
+  throw new McpError(
+    ErrorCode.InvalidParams,
+    'prompt is required and must be a string'
+  );
+}
+
+if (sample_count && (sample_count < 1 || sample_count > 10)) {
+  throw new McpError(
+    ErrorCode.InvalidParams,
+    'sample_count must be between 1 and 10'
+  );
+}
+```
+
+### パストラバーサル攻撃の防止
+
+ファイルパスは必ず正規化・検証を行います。
+
+```typescript
+// ✅ Good
+const normalizedPath = await normalizeAndValidatePath(userProvidedPath);
+// normalizeAndValidatePath 内部でパストラバーサルチェック実施
+
+// ❌ Bad
+const filePath = path.join(baseDir, userProvidedPath); // 検証なし
+await fs.writeFile(filePath, data); // 危険
+```
+
+**セキュリティチェック項目**:
+- ✅ パスが設定されたベースディレクトリ内に収まっているか
+- ✅ `../` によるディレクトリトラバーサルを防いでいるか
+- ✅ システムディレクトリ（`/etc`, `C:\Windows` など）へのアクセスを拒否しているか
+
+### 依存関係の脆弱性チェック
+
+定期的に依存関係の脆弱性をチェックします。
+
+```bash
+# 脆弱性チェック
+npm audit
+
+# 自動修正（マイナーバージョンのみ）
+npm audit fix
+
+# 詳細レポート
+npm audit --json
+```
+
+---
+
+## Git/バージョン管理
+
+### コミットメッセージ規約
+
+**Conventional Commits** 形式を使用します。
+
+```
+<type>: <subject>
+
+<body>
+
+<footer>
+```
+
+**Type（タイプ）**:
+- `feat`: 新機能の追加
+- `fix`: バグ修正
+- `docs`: ドキュメントのみの変更
+- `style`: コードの意味に影響しない変更（フォーマット、セミコロンなど）
+- `refactor`: リファクタリング（機能変更なし）
+- `test`: テストの追加・修正
+- `chore`: ビルドプロセスやツールの変更
+
+**例**:
+
+```
+feat: Add metadata embedding support for JPEG images
+
+- Implement embedMetadataJPEG function using Sharp library
+- Add EXIF ImageDescription field for metadata storage
+- Support minimal/standard/full metadata levels
+
+Closes #42
+```
+
+```
+fix: Resolve tilde expansion issue in input directory path
+
+- Add expandTilde helper function for ~ expansion
+- Fix Windows path resolution error
+- Update getDefaultInputDirectory to use expandTilde
+
+Fixes #58
+```
+
+### コミットの粒度
+
+- **1コミット = 1つの論理的変更**
+- 複数の無関係な変更を1つのコミットにまとめない
+- WIP（Work In Progress）コミットは本番ブランチにプッシュしない
+
+```bash
+# ✅ Good
+git commit -m "feat: Add thumbnail generation support"
+git commit -m "docs: Update README with thumbnail examples"
+
+# ❌ Bad
+git commit -m "Add feature and fix typo and update docs" # 複数の変更が混在
+```
+
+### ブランチ戦略
+
+```
+main (保護ブランチ)
+├── feature/add-thumbnail-support
+├── feature/metadata-levels
+├── fix/path-traversal-security
+└── docs/update-readme
+```
+
+- **`main`**: 安定版、本番環境にデプロイ可能な状態
+- **`feature/*`**: 新機能開発
+- **`fix/*`**: バグ修正
+- **`docs/*`**: ドキュメント更新
+- **`refactor/*`**: リファクタリング
+
+### プルリクエスト
+
+**プルリクエストの構成**:
+
+```markdown
+## 概要
+この PR では、画像のメタデータ埋め込み機能を追加します。
+
+## 変更内容
+- PNG/JPEG/WebP へのメタデータ埋め込みをサポート
+- minimal/standard/full の3つのメタデータレベルを実装
+- 環境変数 OPENAI_IMAGE_METADATA_LEVEL で制御可能
+
+## テスト
+- [x] ユニットテストを追加
+- [x] 統合テストで動作確認
+- [x] 手動テストで各レベルを確認
+
+## 関連 Issue
+Closes #42
+```
+
+**レビュー前チェックリスト**:
+- [ ] テストが通る（`npm test`）
+- [ ] ビルドが成功する（`npm run build`）
+- [ ] リンターエラーがない（`npm run lint`）
+- [ ] コミットメッセージが規約に従っている
+- [ ] コンフリクトがない
+
+### タグとリリース
+
+バージョンタグは **セマンティックバージョニング** に従います。
+
+```bash
+# バージョンアップとタグ作成
+npm version patch  # 1.0.3 → 1.0.4 (バグ修正)
+npm version minor  # 1.0.4 → 1.1.0 (新機能)
+npm version major  # 1.1.0 → 2.0.0 (破壊的変更)
+
+# タグをプッシュ
+git push origin main --tags
+
+# GitHub リリース作成
+gh release create v1.0.4 --title "v1.0.4: Bug fixes" --notes "..."
+```
+
+---
+
 ## まとめ
 
 このコーディング規約は、プロジェクトの保守性と可読性を向上させるためのものです。新しい機能を追加する際は、この規約に従ってコードを記述してください。
 
 ### チェックリスト
 
+**コード品質**:
 - [ ] ファイルは適切なディレクトリに配置されているか
 - [ ] 型定義は `src/types/` に分離されているか
 - [ ] 再利用可能な関数は `src/utils/` に分離されているか
 - [ ] 1つの関数は1つの責務のみを持っているか
-- [ ] エラーハンドリングは適切に行われているか
+- [ ] エラーハンドリングは適切に行われているか（McpError使用）
 - [ ] JSDocコメントは記述されているか
 - [ ] インポートは適切な順序で記述されているか
 - [ ] `async/await` を使用しているか
 - [ ] デバッグログは `DEBUG` 環境変数でコントロールされているか
+
+**テスト**:
+- [ ] ユニットテストを作成したか
+- [ ] エラーケースもテストしたか
+- [ ] テストカバレッジ目標を達成しているか
+- [ ] モックは適切に使用されているか
+
+**セキュリティ**:
+- [ ] APIキーをハードコードしていないか
+- [ ] 機密情報をログに出力していないか
+- [ ] ユーザー入力を検証しているか
+- [ ] パストラバーサル対策を実施しているか
+
+**Git/バージョン管理**:
+- [ ] コミットメッセージは Conventional Commits 形式に従っているか
+- [ ] 1コミットで1つの論理的変更になっているか
+- [ ] プルリクエストの説明は十分か
+- [ ] レビュー前チェックリストを確認したか
