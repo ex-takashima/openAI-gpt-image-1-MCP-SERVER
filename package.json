@@ -1,6 +1,6 @@
 {
   "name": "openai-gpt-image-mcp-server",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "MCP server for OpenAI gpt-image-1 API - Generate and edit images using GPT-Image-1",
   "main": "dist/index.js",
   "type": "module",
