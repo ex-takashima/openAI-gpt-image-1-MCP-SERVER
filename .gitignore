@@ -54,3 +54,4 @@ temp/
 *.tgz
 /.private
 /docs/_archived
+.mcp.json
