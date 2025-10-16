@@ -44,6 +44,9 @@
     "better-sqlite3": "^12.4.1",
     "dotenv": "^16.4.7",
     "openai": "^4.73.0",
+    "png-chunk-text": "^1.0.0",
+    "png-chunks-encode": "^1.0.0",
+    "png-chunks-extract": "^1.0.0",
     "sharp": "^0.33.5"
   },
   "devDependencies": {

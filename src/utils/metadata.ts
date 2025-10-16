@@ -7,6 +7,10 @@
 import { randomUUID, createHash } from 'crypto';
 import * as fs from 'fs/promises';
 import { debugLog } from './cost.js';
+import extract from 'png-chunks-extract';
+import encode from 'png-chunks-encode';
+import text from 'png-chunk-text';
+import sharp from 'sharp';
 
 /**
  * Metadata to embed in images (Spec Compliant)
@@ -120,297 +124,119 @@ export function buildMetadataObject(
 
 /**
  * Embed metadata into PNG image
- * Uses a single tEXt chunk with JSON
+ * Uses png-chunks-extract, png-chunks-encode, png-chunk-text libraries
  */
 export async function embedMetadataPNG(
   imageBuffer: Buffer,
   metadata: ImageMetadata
 ): Promise<Buffer> {
   try {
-    debugLog('[Metadata] Embedding metadata into PNG image');
+    debugLog('[Metadata] Embedding metadata into PNG image using png-chunks-* libraries');
 
-    // PNG signature
-    const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    // 1. Extract PNG chunks
+    const chunks = extract(imageBuffer);
 
-    // Verify PNG signature
-    if (!imageBuffer.subarray(0, 8).equals(PNG_SIGNATURE)) {
-      throw new Error('Invalid PNG signature');
-    }
+    // 2. Create tEXt chunk with metadata JSON
+    const metadataJson = JSON.stringify(metadata);
+    const textChunk = text.encode('openai_gpt_image_metadata', metadataJson);
 
-    // Find IEND chunk position (last chunk)
-    let iendPosition = -1;
-    let position = 8; // Skip PNG signature
+    // 3. Find IEND chunk index (must be last chunk in PNG)
+    const iendIndex = chunks.findIndex(chunk => chunk.name === 'IEND');
 
-    while (position < imageBuffer.length - 12) {
-      const chunkLength = imageBuffer.readUInt32BE(position);
-      const chunkType = imageBuffer.toString('ascii', position + 4, position + 8);
-
-      if (chunkType === 'IEND') {
-        iendPosition = position;
-        break;
-      }
-
-      // Move to next chunk (length + type + data + crc = 4 + 4 + length + 4)
-      position += 12 + chunkLength;
-    }
-
-    if (iendPosition === -1) {
+    if (iendIndex === -1) {
       throw new Error('IEND chunk not found');
     }
 
-    // Create single tEXt chunk with JSON metadata
-    const metadataJson = JSON.stringify(metadata);
-    const textChunk = createPNGTextChunk('openai_gpt_image_metadata', metadataJson);
+    // 4. Insert metadata chunk before IEND
+    chunks.splice(iendIndex, 0, textChunk);
 
-    // Combine: original image (up to IEND) + metadata chunk + IEND chunk
-    const beforeIEND = imageBuffer.subarray(0, iendPosition);
-    const iendChunk = imageBuffer.subarray(iendPosition);
-
-    const result = Buffer.concat([beforeIEND, textChunk, iendChunk]);
+    // 5. Re-encode PNG
+    const result = Buffer.from(encode(chunks));
 
     debugLog('[Metadata] PNG metadata embedded successfully');
     return result;
   } catch (error: any) {
     debugLog('[Metadata] Warning: Failed to embed PNG metadata:', error.message);
-    // Return original buffer if metadata embedding fails
+    // Return original buffer if metadata embedding fails (best effort)
     return imageBuffer;
   }
 }
 
 /**
- * Create a PNG tEXt chunk
- */
-function createPNGTextChunk(keyword: string, text: string): Buffer {
-  // tEXt chunk format: Length (4) + Type (4) + Keyword (n) + Null (1) + Text (n) + CRC (4)
-  const keywordBuffer = Buffer.from(keyword, 'latin1');
-  const textBuffer = Buffer.from(text, 'latin1');
-  const nullSeparator = Buffer.from([0x00]);
-
-  const chunkType = Buffer.from('tEXt', 'ascii');
-  const chunkData = Buffer.concat([keywordBuffer, nullSeparator, textBuffer]);
-  const chunkLength = Buffer.alloc(4);
-  chunkLength.writeUInt32BE(chunkData.length, 0);
-
-  // Calculate CRC32 for type + data
-  const crc = calculateCRC32(Buffer.concat([chunkType, chunkData]));
-  const crcBuffer = Buffer.alloc(4);
-  crcBuffer.writeUInt32BE(crc, 0);
-
-  return Buffer.concat([chunkLength, chunkType, chunkData, crcBuffer]);
-}
-
-/**
- * Calculate CRC32 checksum (PNG standard)
- */
-function calculateCRC32(buffer: Buffer): number {
-  // CRC32 lookup table
-  const crcTable = makeCRCTable();
-
-  let crc = 0xffffffff;
-
-  for (let i = 0; i < buffer.length; i++) {
-    const byte = buffer[i];
-    const lookupIndex = (crc ^ byte) & 0xff;
-    crc = (crc >>> 8) ^ crcTable[lookupIndex];
-  }
-
-  return (crc ^ 0xffffffff) >>> 0;
-}
-
-/**
- * Generate CRC32 lookup table
- */
-function makeCRCTable(): number[] {
-  const table: number[] = [];
-
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) {
-      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    }
-    table[n] = c;
-  }
-
-  return table;
-}
-
-/**
- * Embed metadata into JPEG image
- * Uses EXIF ImageDescription field with JSON
+ * Embed metadata into JPEG/WebP image
+ * Uses Sharp library with .withMetadata()
  */
 export async function embedMetadataJPEG(
   imageBuffer: Buffer,
-  metadata: ImageMetadata
+  metadata: ImageMetadata,
+  format: 'jpeg' | 'webp' = 'jpeg'
 ): Promise<Buffer> {
   try {
-    debugLog('[Metadata] Embedding metadata into JPEG image');
+    debugLog(`[Metadata] Embedding metadata into ${format.toUpperCase()} image using Sharp`);
 
-    // JPEG markers
-    const SOI = 0xffd8; // Start of Image
-    const APP1 = 0xffe1; // EXIF marker
-
-    // Verify JPEG signature
-    if (imageBuffer.readUInt16BE(0) !== SOI) {
-      throw new Error('Invalid JPEG signature');
-    }
-
-    // Create metadata JSON string
     const metadataJson = JSON.stringify(metadata);
+    const image = sharp(imageBuffer);
 
-    // Create APP1 (EXIF) segment with metadata
-    const exifSegment = createJPEGEXIFSegment(metadataJson);
+    let result: Buffer;
 
-    // Find position to insert APP1 (after SOI marker)
-    let insertPosition = 2; // After SOI
-
-    // If there's already an APP1, find the end of existing markers
-    while (insertPosition < imageBuffer.length - 2) {
-      const marker = imageBuffer.readUInt16BE(insertPosition);
-
-      // Stop at first non-APPn marker (SOS, SOF, etc.)
-      if ((marker & 0xfff0) !== 0xffe0 && marker !== 0xfffe) {
-        break;
-      }
-
-      // Skip this segment
-      const segmentLength = imageBuffer.readUInt16BE(insertPosition + 2);
-      insertPosition += 2 + segmentLength;
+    if (format === 'jpeg') {
+      result = await image
+        .jpeg({ quality: 95 })
+        .withMetadata({
+          exif: {
+            IFD0: {
+              ImageDescription: metadataJson
+            }
+          }
+        })
+        .toBuffer();
+    } else {
+      result = await image
+        .webp({ quality: 95 })
+        .withMetadata({
+          exif: {
+            IFD0: {
+              ImageDescription: metadataJson
+            }
+          }
+        })
+        .toBuffer();
     }
 
-    // Insert EXIF segment
-    const beforeEXIF = imageBuffer.subarray(0, insertPosition);
-    const afterEXIF = imageBuffer.subarray(insertPosition);
-
-    const result = Buffer.concat([beforeEXIF, exifSegment, afterEXIF]);
-
-    debugLog('[Metadata] JPEG metadata embedded successfully');
+    debugLog(`[Metadata] ${format.toUpperCase()} metadata embedded successfully`);
     return result;
   } catch (error: any) {
-    debugLog('[Metadata] Warning: Failed to embed JPEG metadata:', error.message);
-    // Return original buffer if metadata embedding fails
-    return imageBuffer;
-  }
-}
-
-/**
- * Create JPEG APP1 (EXIF) segment with metadata
- */
-function createJPEGEXIFSegment(metadataText: string): Buffer {
-  // Simplified EXIF structure with ImageDescription
-  // APP1 marker (FFE1) + Length (2) + "Exif\0\0" (6) + TIFF header + IFD + ImageDescription
-
-  const exifIdentifier = Buffer.from('Exif\0\0', 'ascii');
-
-  // TIFF header (little-endian)
-  const tiffHeader = Buffer.from([
-    0x49, 0x49, // Byte order (II = little-endian)
-    0x2a, 0x00, // TIFF magic number (42)
-    0x08, 0x00, 0x00, 0x00, // Offset to first IFD
-  ]);
-
-  // Create IFD with ImageDescription tag (0x010E)
-  const imageDescTag = 0x010e;
-  const imageDescType = 2; // ASCII
-  const imageDescData = Buffer.from(metadataText, 'utf8');
-
-  // IFD entry: Tag (2) + Type (2) + Count (4) + Value/Offset (4)
-  const ifd = Buffer.alloc(2 + 12 + 4); // Entry count (2) + 1 entry (12) + Next IFD offset (4)
-
-  ifd.writeUInt16LE(1, 0); // Number of entries
-
-  // ImageDescription entry
-  ifd.writeUInt16LE(imageDescTag, 2); // Tag
-  ifd.writeUInt16LE(imageDescType, 4); // Type (ASCII)
-  ifd.writeUInt32LE(imageDescData.length, 6); // Count
-  ifd.writeUInt32LE(8 + ifd.length, 10); // Offset to data
-
-  ifd.writeUInt32LE(0, 14); // Next IFD offset (none)
-
-  // Combine TIFF structure
-  const tiffData = Buffer.concat([tiffHeader, ifd, imageDescData]);
-
-  // Create APP1 segment
-  const segmentData = Buffer.concat([exifIdentifier, tiffData]);
-  const segmentLength = Buffer.alloc(2);
-  segmentLength.writeUInt16BE(segmentData.length + 2, 0); // +2 for length field itself
-
-  const app1Marker = Buffer.from([0xff, 0xe1]);
-
-  return Buffer.concat([app1Marker, segmentLength, segmentData]);
-}
-
-/**
- * Embed metadata into image buffer (unified function)
- */
-export async function embedMetadata(
-  imageBuffer: Buffer,
-  metadata: ImageMetadata,
-  format: string
-): Promise<Buffer> {
-  const normalizedFormat = format.toLowerCase();
-
-  if (normalizedFormat === 'png') {
-    return await embedMetadataPNG(imageBuffer, metadata);
-  } else if (normalizedFormat === 'jpg' || normalizedFormat === 'jpeg') {
-    return await embedMetadataJPEG(imageBuffer, metadata);
-  } else {
-    // For other formats (webp, etc.), metadata embedding not supported
-    debugLog(`[Metadata] Format ${format} does not support metadata embedding`);
+    debugLog(`[Metadata] Warning: Failed to embed ${format.toUpperCase()} metadata:`, error.message);
+    // Return original buffer if metadata embedding fails (best effort)
     return imageBuffer;
   }
 }
 
 /**
  * Extract metadata from PNG image
+ * Uses png-chunks-extract and png-chunk-text libraries
  */
 async function extractMetadataPNG(imageBuffer: Buffer): Promise<ImageMetadata | null> {
   try {
-    const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    debugLog('[Metadata] Extracting metadata from PNG using png-chunks-* libraries');
 
-    // Verify PNG signature
-    if (!imageBuffer.subarray(0, 8).equals(PNG_SIGNATURE)) {
-      return null;
-    }
+    // Extract PNG chunks
+    const chunks = extract(imageBuffer);
 
-    let position = 8; // Skip PNG signature
+    // Find our metadata tEXt chunk
+    for (const chunk of chunks) {
+      if (chunk.name === 'tEXt') {
+        const decoded = text.decode(chunk.data);
 
-    // Look for our metadata tEXt chunk
-    while (position < imageBuffer.length - 12) {
-      const chunkLength = imageBuffer.readUInt32BE(position);
-      const chunkType = imageBuffer.toString('ascii', position + 4, position + 8);
-
-      if (chunkType === 'IEND') {
-        break;
-      }
-
-      if (chunkType === 'tEXt') {
-        // Read chunk data
-        const chunkData = imageBuffer.subarray(position + 8, position + 8 + chunkLength);
-
-        // Find null separator between keyword and text
-        let nullIndex = -1;
-        for (let i = 0; i < chunkData.length; i++) {
-          if (chunkData[i] === 0x00) {
-            nullIndex = i;
-            break;
-          }
-        }
-
-        if (nullIndex !== -1) {
-          const keyword = chunkData.toString('latin1', 0, nullIndex);
-          const text = chunkData.toString('latin1', nullIndex + 1);
-
-          if (keyword === 'openai_gpt_image_metadata') {
-            const metadata = JSON.parse(text) as ImageMetadata;
-            return metadata;
-          }
+        if (decoded.keyword === 'openai_gpt_image_metadata') {
+          const metadata = JSON.parse(decoded.text) as ImageMetadata;
+          debugLog('[Metadata] PNG metadata extracted successfully');
+          return metadata;
         }
       }
-
-      // Move to next chunk
-      position += 12 + chunkLength;
     }
 
+    debugLog('[Metadata] No metadata found in PNG');
     return null;
   } catch (error: any) {
     debugLog('[Metadata] Error extracting PNG metadata:', error.message);
@@ -419,63 +245,35 @@ async function extractMetadataPNG(imageBuffer: Buffer): Promise<ImageMetadata | 
 }
 
 /**
- * Extract metadata from JPEG image
+ * Extract metadata from JPEG/WebP image
+ * Uses Sharp library to read EXIF
  */
 async function extractMetadataJPEG(imageBuffer: Buffer): Promise<ImageMetadata | null> {
   try {
-    const SOI = 0xffd8;
+    debugLog('[Metadata] Extracting metadata from JPEG/WebP using Sharp');
 
-    // Verify JPEG signature
-    if (imageBuffer.readUInt16BE(0) !== SOI) {
-      return null;
-    }
+    const image = sharp(imageBuffer);
+    const metadata = await image.metadata();
 
-    let position = 2; // After SOI
+    if (metadata.exif) {
+      const exifBuffer = metadata.exif;
+      // Read EXIF as string (limit to 10KB to avoid performance issues)
+      const exifString = exifBuffer.toString('utf8', 0, Math.min(exifBuffer.length, 10000));
 
-    // Look for APP1 (EXIF) segments
-    while (position < imageBuffer.length - 2) {
-      const marker = imageBuffer.readUInt16BE(position);
+      // Look for JSON containing our UUID field
+      const jsonMatch = exifString.match(/\{[^{}]*openai_gpt_image_uuid[^{}]*\}/);
 
-      if (marker === 0xffe1) {
-        // APP1 marker found
-        const segmentLength = imageBuffer.readUInt16BE(position + 2);
-        const segmentData = imageBuffer.subarray(position + 4, position + 2 + segmentLength);
-
-        // Check for Exif identifier
-        const exifIdentifier = segmentData.toString('ascii', 0, 6);
-        if (exifIdentifier === 'Exif\0\0') {
-          // Read TIFF data
-          const tiffData = segmentData.subarray(6);
-
-          // Try to find JSON metadata in ImageDescription or UserComment
-          const dataString = tiffData.toString('utf8');
-
-          // Look for JSON containing our UUID field
-          const jsonMatch = dataString.match(/\{[^{}]*openai_gpt_image_uuid[^{}]*\}/);
-          if (jsonMatch) {
-            const metadata = JSON.parse(jsonMatch[0]) as ImageMetadata;
-            return metadata;
-          }
-        }
-      }
-
-      // Stop at first SOS marker (start of scan)
-      if (marker === 0xffda) {
-        break;
-      }
-
-      // Move to next marker
-      if ((marker & 0xff00) === 0xff00) {
-        const segmentLength = imageBuffer.readUInt16BE(position + 2);
-        position += 2 + segmentLength;
-      } else {
-        break;
+      if (jsonMatch) {
+        const extractedMetadata = JSON.parse(jsonMatch[0]) as ImageMetadata;
+        debugLog('[Metadata] JPEG/WebP metadata extracted successfully');
+        return extractedMetadata;
       }
     }
 
+    debugLog('[Metadata] No metadata found in JPEG/WebP');
     return null;
   } catch (error: any) {
-    debugLog('[Metadata] Error extracting JPEG metadata:', error.message);
+    debugLog('[Metadata] Error extracting JPEG/WebP metadata:', error.message);
     return null;
   }
 }
@@ -487,16 +285,17 @@ export async function extractMetadataFromImage(imagePath: string): Promise<Image
   try {
     const imageBuffer = await fs.readFile(imagePath);
 
-    // Determine format from file signature
-    const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
-    const JPEG_SIGNATURE = Buffer.from([0xff, 0xd8]);
+    // Use Sharp to detect format
+    const image = sharp(imageBuffer);
+    const metadata = await image.metadata();
+    const format = metadata.format;
 
-    if (imageBuffer.subarray(0, 4).equals(PNG_SIGNATURE)) {
+    if (format === 'png') {
       return await extractMetadataPNG(imageBuffer);
-    } else if (imageBuffer.subarray(0, 2).equals(JPEG_SIGNATURE)) {
+    } else if (format === 'jpeg' || format === 'webp') {
       return await extractMetadataJPEG(imageBuffer);
     } else {
-      debugLog('[Metadata] Unsupported image format for metadata extraction');
+      debugLog(`[Metadata] Unsupported image format for metadata extraction: ${format}`);
       return null;
     }
   } catch (error: any) {
@@ -566,9 +365,11 @@ export async function saveImageWithMetadata(
   if (ext === 'png') {
     finalBuffer = await embedMetadataPNG(imageBuffer, metadata);
   } else if (ext === 'jpg' || ext === 'jpeg') {
-    finalBuffer = await embedMetadataJPEG(imageBuffer, metadata);
+    finalBuffer = await embedMetadataJPEG(imageBuffer, metadata, 'jpeg');
+  } else if (ext === 'webp') {
+    finalBuffer = await embedMetadataJPEG(imageBuffer, metadata, 'webp');
   } else {
-    // For other formats (webp, etc.), save without metadata
+    // For other formats, save without metadata
     debugLog(`[Metadata] Format ${ext} does not support metadata embedding, saving without metadata`);
     finalBuffer = imageBuffer;
   }
