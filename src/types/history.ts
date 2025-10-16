@@ -16,12 +16,14 @@ export interface HistoryRecord {
   size?: string;
   quality?: string;
   output_format?: string;
+  params_hash?: string; // SHA-256 hash of parameters
 }
 
 /**
  * Parameters for creating a history record
  */
 export interface CreateHistoryParams {
+  uuid?: string; // Optional: if not provided, will be auto-generated
   tool_name: string;
   prompt: string;
   parameters: Record<string, any>;
@@ -30,6 +32,7 @@ export interface CreateHistoryParams {
   size?: string;
   quality?: string;
   output_format?: string;
+  params_hash?: string; // SHA-256 hash of parameters
 }
 
 /**

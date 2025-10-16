@@ -8,13 +8,14 @@ import { saveBase64Image, validateImageFormat, validateImageSize, validateQualit
 import { calculateCost, formatCostBreakdown, debugLog } from '../utils/cost.js';
 import { normalizeAndValidatePath, getDisplayPath } from '../utils/path.js';
 import { getDatabase } from '../utils/database.js';
-import { saveImageWithMetadata } from '../utils/metadata.js';
+import { saveImageWithMetadata, generateImageUUID, calculateParamsHash, buildMetadataObject } from '../utils/metadata.js';
+import { generateThumbnailDataFromFile, createThumbnailContent, isThumbnailEnabled } from '../utils/thumbnail.js';
 import type { GenerateImageParams } from '../types/tools.js';
 
 export async function generateImage(
   openai: OpenAI,
   params: GenerateImageParams
-): Promise<string> {
+): Promise<string | { content: Array<{ type: string; text?: string; data?: string; mimeType?: string; annotations?: any }> }> {
   debugLog('Generate image called with params:', params);
 
   const {
@@ -27,6 +28,7 @@ export async function generateImage(
     moderation = 'auto',
     sample_count = 1,
     return_base64 = false,
+    include_thumbnail,
   } = params;
 
   // Normalize and validate output path (cross-platform)
@@ -76,6 +78,26 @@ export async function generateImage(
   }
 
   try {
+    // Generate UUID for this image generation
+    const uuid = generateImageUUID();
+    debugLog(`[Metadata] Generated UUID: ${uuid}`);
+
+    // Build params object for hashing (all generation parameters)
+    const paramsForHash = {
+      model: 'gpt-image-1',
+      prompt,
+      size,
+      quality,
+      output_format,
+      transparent_background,
+      moderation,
+      sample_count,
+    };
+
+    // Calculate parameter hash for integrity verification
+    const paramsHash = calculateParamsHash(paramsForHash);
+    debugLog(`[Metadata] Calculated params hash: ${paramsHash.substring(0, 16)}...`);
+
     debugLog('Calling OpenAI API...');
 
     // Build request parameters
@@ -130,31 +152,16 @@ export async function generateImage(
     for (let i = 0; i < response.data.length; i++) {
       const imageData = response.data[i];
 
-      let base64Image: string;
-
-      if (imageData.b64_json) {
-        // If base64 is provided directly
-        base64Image = imageData.b64_json;
-        debugLog(`Image ${i + 1}: Using b64_json from response`);
-      } else if (imageData.url) {
-        // If URL is provided, download the image
-        debugLog(`Image ${i + 1}: Downloading from URL:`, imageData.url);
-        const imageResponse = await fetch(imageData.url);
-        if (!imageResponse.ok) {
-          throw new McpError(
-            ErrorCode.InternalError,
-            `Failed to download image ${i + 1}: ${imageResponse.statusText}`
-          );
-        }
-        const arrayBuffer = await imageResponse.arrayBuffer();
-        base64Image = Buffer.from(arrayBuffer).toString('base64');
-        debugLog(`Image ${i + 1}: Downloaded and converted to base64`);
-      } else {
+      // gpt-image-1 always returns b64_json (URL is not supported)
+      if (!imageData.b64_json) {
         throw new McpError(
           ErrorCode.InternalError,
-          `No image data (b64_json or url) in response for image ${i + 1}`
+          `No image data (b64_json) in response for image ${i + 1}`
         );
       }
+
+      const base64Image = imageData.b64_json;
+      debugLog(`Image ${i + 1}: Using b64_json from response`);
 
       // Generate numbered filename for multiple images
       let imagePath = normalizedPath;
@@ -165,16 +172,17 @@ export async function generateImage(
         imagePath = `${basePath}_${i + 1}.${ext}`;
       }
 
-      // Prepare metadata for embedding
-      const metadata = {
-        tool: 'generate_image',
+      // Build metadata object for embedding (spec compliant)
+      const metadata = buildMetadataObject(
+        uuid,
+        paramsHash,
+        'generate_image',
+        'gpt-image-1',
+        actualSize,
+        actualQuality,
         prompt,
-        model: 'gpt-image-1',
-        size: actualSize,
-        quality: actualQuality,
-        format: output_format,
-        created_at: new Date().toISOString(),
-      };
+        paramsForHash
+      );
 
       // Save image to file with embedded metadata
       await saveImageWithMetadata(base64Image, imagePath, metadata);
@@ -182,11 +190,23 @@ export async function generateImage(
       debugLog(`Image ${i + 1}: Saved to ${imagePath}`);
     }
 
-    // Calculate cost (estimated) - multiply by number of images
-    const estimatedInputTokens = Math.ceil(prompt.length / 4); // Rough estimate
-    const estimatedOutputTokens = 4096 * sample_count; // Typical image generation tokens per image
+    // Get actual token usage from API response (gpt-image-1 specific)
+    let inputTokens: number;
+    let outputTokens: number;
 
-    const cost = calculateCost(estimatedInputTokens, estimatedOutputTokens, {
+    if (response.usage) {
+      // Use actual values from API
+      inputTokens = response.usage.input_tokens;
+      outputTokens = response.usage.output_tokens;
+      debugLog(`[Usage] Actual tokens from API - Input: ${inputTokens}, Output: ${outputTokens}`);
+    } else {
+      // Fallback to estimation if usage is not available
+      inputTokens = Math.ceil(prompt.length / 4);
+      outputTokens = 4096 * sample_count;
+      debugLog(`[Usage] Estimated tokens - Input: ${inputTokens}, Output: ${outputTokens}`);
+    }
+
+    const cost = calculateCost(inputTokens, outputTokens, {
       size: actualSize,
       quality: actualQuality,
       format: output_format,
@@ -198,9 +218,10 @@ export async function generateImage(
       format: output_format,
     });
 
-    // Save to history database
+    // Save to history database (use the same UUID)
     const db = getDatabase();
     const historyUuid = db.createRecord({
+      uuid, // Use the generated UUID
       tool_name: 'generate_image',
       prompt,
       parameters: {
@@ -216,24 +237,54 @@ export async function generateImage(
       size: actualSize,
       quality: actualQuality,
       output_format,
+      params_hash: paramsHash, // Add params hash for integrity verification
     });
 
     debugLog(`History record created: ${historyUuid}`);
 
+    // Determine if thumbnails should be included
+    const shouldIncludeThumbnail =
+      include_thumbnail !== undefined
+        ? include_thumbnail
+        : isThumbnailEnabled();
+
     // Build result message
-    let result: string;
+    let resultText: string;
     if (sample_count === 1) {
       const displayPath = getDisplayPath(savedPaths[0]);
-      result = `Image generated successfully: ${displayPath}\n${costInfo}\n\n📝 History ID: ${historyUuid}`;
+      resultText = `Image generated successfully: ${displayPath}\n${costInfo}\n\n📝 History ID: ${historyUuid}`;
     } else {
-      result = `${sample_count} images generated successfully:\n`;
+      resultText = `${sample_count} images generated successfully:\n`;
       savedPaths.forEach((path, idx) => {
-        result += `  ${idx + 1}. ${getDisplayPath(path)}\n`;
+        resultText += `  ${idx + 1}. ${getDisplayPath(path)}\n`;
       });
-      result += `\n${costInfo}\n\n📝 History ID: ${historyUuid}`;
+      resultText += `\n${costInfo}\n\n📝 History ID: ${historyUuid}`;
     }
 
-    return result;
+    // Return with thumbnails if enabled
+    if (shouldIncludeThumbnail) {
+      debugLog('[Thumbnail] Including thumbnails in response');
+      const content: Array<{ type: string; text?: string; data?: string; mimeType?: string; annotations?: any }> = [
+        { type: 'text', text: resultText },
+      ];
+
+      // Generate and add thumbnails for each image
+      for (const imagePath of savedPaths) {
+        try {
+          const thumbnailData = await generateThumbnailDataFromFile(imagePath);
+          const thumbnailContent = createThumbnailContent(thumbnailData);
+          content.push(thumbnailContent);
+          debugLog(`[Thumbnail] Added thumbnail for: ${imagePath}`);
+        } catch (error: any) {
+          debugLog(`[WARNING] Failed to generate thumbnail for ${imagePath}:`, error.message);
+          // Continue without thumbnail for this image
+        }
+      }
+
+      return { content };
+    }
+
+    return resultText;
   } catch (error: any) {
     debugLog('Error generating image:', error);
 

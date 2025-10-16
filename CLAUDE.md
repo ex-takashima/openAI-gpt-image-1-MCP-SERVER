@@ -435,7 +435,12 @@ DEBUG=1 openai-gpt-image-mcp-server
 | `OPENAI_ORGANIZATION` | ❌ | OpenAI 組織ID（複数組織に所属の場合） |
 | `OPENAI_IMAGE_OUTPUT_DIR` | ❌ | 画像の保存先ディレクトリ（デフォルト: `~/Downloads/openai-images`） |
 | `OPENAI_IMAGE_INPUT_DIR` | ❌ | 入力画像の読み込み元ディレクトリ（デフォルト: 出力ディレクトリと同じ） |
-| `HISTORY_DB_PATH` | ❌ | 履歴データベースの保存場所（デフォルト: `~/.openai-gpt-image/history.db`） |
+| `OPENAI_IMAGE_THUMBNAIL` | ❌ | サムネイル生成を有効化（`true` / `false`、デフォルト: `false`） |
+| `OPENAI_IMAGE_THUMBNAIL_SIZE` | ❌ | サムネイルサイズ（ピクセル、デフォルト: `128`、範囲: 1-512） |
+| `OPENAI_IMAGE_THUMBNAIL_QUALITY` | ❌ | サムネイル品質（JPEG品質、デフォルト: `60`、範囲: 1-100） |
+| `OPENAI_IMAGE_EMBED_METADATA` | ❌ | メタデータ埋め込みの有効化（`true` / `false` / `0`、デフォルト: `true`） |
+| `OPENAI_IMAGE_METADATA_LEVEL` | ❌ | メタデータ詳細度（`minimal` / `standard` / `full`、デフォルト: `standard`） |
+| `HISTORY_DB_PATH` | ❌ | 履歴データベースの保存場所（デフォルト: `{OPENAI_IMAGE_OUTPUT_DIR}/data/openai-gpt-image.db`） |
 | `DEBUG` | ❌ | "1" を指定するとデバッグログ有効 |
 
 ### 画像出力パスについて

@@ -23,6 +23,7 @@ export interface GenerateImageParams {
   moderation?: ModerationLevel;
   sample_count?: number;
   return_base64?: boolean;
+  include_thumbnail?: boolean;
 }
 
 /**
@@ -41,6 +42,7 @@ export interface EditImageParams {
   moderation?: ModerationLevel;
   sample_count?: number;
   return_base64?: boolean;
+  include_thumbnail?: boolean;
 }
 
 /**
@@ -57,6 +59,7 @@ export interface TransformImageParams {
   moderation?: ModerationLevel;
   sample_count?: number;
   return_base64?: boolean;
+  include_thumbnail?: boolean;
 }
 
 /**

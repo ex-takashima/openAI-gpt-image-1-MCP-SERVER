@@ -115,6 +115,9 @@ Add to your Claude Desktop configuration file:
 **Optional Environment Variables**:
 - `OPENAI_IMAGE_OUTPUT_DIR`: Custom output directory (default: `~/Downloads/openai-images`)
 - `OPENAI_IMAGE_INPUT_DIR`: Custom input directory (default: same as output directory)
+- `OPENAI_IMAGE_THUMBNAIL`: Enable thumbnail generation (`true`/`false`, default: `false`)
+- `OPENAI_IMAGE_THUMBNAIL_SIZE`: Thumbnail size in pixels (default: `128`, range: 1-512)
+- `OPENAI_IMAGE_THUMBNAIL_QUALITY`: Thumbnail JPEG quality (default: `60`, range: 1-100)
 - `OPENAI_ORGANIZATION`: OpenAI organization ID (if you belong to multiple)
 - `HISTORY_DB_PATH`: Custom database location (default: `~/.openai-gpt-image/history.db`)
 - `DEBUG`: Set to `1` for detailed logging

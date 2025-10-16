@@ -22,6 +22,7 @@ import { editImage } from './tools/edit.js';
 import { transformImage } from './tools/transform.js';
 import { listImages } from './tools/list.js';
 import { listHistory, getHistoryByUuid } from './tools/history.js';
+import { getMetadataFromImage } from './tools/getMetadataFromImage.js';
 import {
   startGenerationJob,
   checkJobStatus,
@@ -117,6 +118,10 @@ const TOOLS = [
           type: 'boolean',
           description: 'Return base64 image data in response (default: false)',
         },
+        include_thumbnail: {
+          type: 'boolean',
+          description: 'Include thumbnail preview in MCP response for LLM recognition (default: false, overrides OPENAI_IMAGE_THUMBNAIL env var)',
+        },
       },
       required: ['prompt'],
     },
@@ -184,6 +189,10 @@ const TOOLS = [
           type: 'boolean',
           description: 'Return base64 image data in response (default: false)',
         },
+        include_thumbnail: {
+          type: 'boolean',
+          description: 'Include thumbnail preview in MCP response for LLM recognition (default: false, overrides OPENAI_IMAGE_THUMBNAIL env var)',
+        },
       },
       required: ['prompt'],
     },
@@ -242,6 +251,10 @@ const TOOLS = [
         return_base64: {
           type: 'boolean',
           description: 'Return base64 image data in response (default: false)',
+        },
+        include_thumbnail: {
+          type: 'boolean',
+          description: 'Include thumbnail preview in MCP response for LLM recognition (default: false, overrides OPENAI_IMAGE_THUMBNAIL env var)',
         },
       },
       required: ['prompt'],
@@ -307,6 +320,23 @@ const TOOLS = [
         },
       },
       required: ['uuid'],
+    },
+  },
+  {
+    name: 'get_metadata_from_image',
+    description:
+      'Extract and display embedded metadata from a generated image file. ' +
+      'Shows UUID, parameter hash, generation settings, and verifies integrity with database. ' +
+      'Works with PNG and JPEG images that contain embedded OpenAI GPT-Image metadata.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        image_path: {
+          type: 'string',
+          description: 'Path to the image file to read metadata from',
+        },
+      },
+      required: ['image_path'],
     },
   },
   {
@@ -454,23 +484,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (name) {
       case 'generate_image': {
         const result = await generateImage(openai, args as any);
-        return {
-          content: [{ type: 'text', text: result }],
-        };
+        // Result can be string or content object (when thumbnails are included)
+        if (typeof result === 'string') {
+          return { content: [{ type: 'text', text: result }] };
+        }
+        return result;
       }
 
       case 'edit_image': {
         const result = await editImage(openai, args as any);
-        return {
-          content: [{ type: 'text', text: result }],
-        };
+        // Result can be string or content object (when thumbnails are included)
+        if (typeof result === 'string') {
+          return { content: [{ type: 'text', text: result }] };
+        }
+        return result;
       }
 
       case 'transform_image': {
         const result = await transformImage(openai, args as any);
-        return {
-          content: [{ type: 'text', text: result }],
-        };
+        // Result can be string or content object (when thumbnails are included)
+        if (typeof result === 'string') {
+          return { content: [{ type: 'text', text: result }] };
+        }
+        return result;
       }
 
       case 'list_generated_images': {
@@ -489,6 +525,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       case 'get_history_by_uuid': {
         const result = await getHistoryByUuid(args as any);
+        return {
+          content: [{ type: 'text', text: result }],
+        };
+      }
+
+      case 'get_metadata_from_image': {
+        const result = await getMetadataFromImage(args as any);
         return {
           content: [{ type: 'text', text: result }],
         };

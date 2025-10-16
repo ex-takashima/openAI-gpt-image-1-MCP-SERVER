@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
+import { getDefaultOutputDirectory } from './path.js';
 import type { HistoryRecord, CreateHistoryParams, SearchHistoryParams } from '../types/history.js';
 
 /**
@@ -16,12 +17,9 @@ export class HistoryDatabase {
   public db: Database.Database; // Public for job manager access
 
   constructor(dbPath?: string) {
-    // Default database path: ~/.openai-gpt-image/history.db
-    const defaultPath = path.join(
-      os.homedir(),
-      '.openai-gpt-image',
-      'history.db'
-    );
+    // Default database path: {OPENAI_IMAGE_OUTPUT_DIR}/data/openai-gpt-image.db
+    const outputDir = getDefaultOutputDirectory();
+    const defaultPath = path.join(outputDir, 'data', 'openai-gpt-image.db');
 
     const finalPath = dbPath || process.env.HISTORY_DB_PATH || defaultPath;
 
@@ -52,7 +50,8 @@ export class HistoryDatabase {
         sample_count INTEGER NOT NULL DEFAULT 1,
         size TEXT,
         quality TEXT,
-        output_format TEXT
+        output_format TEXT,
+        params_hash TEXT
       );
 
       CREATE INDEX IF NOT EXISTS idx_history_created_at ON history(created_at DESC);
@@ -83,14 +82,15 @@ export class HistoryDatabase {
    * Create a new history record
    */
   createRecord(params: CreateHistoryParams): string {
-    const uuid = randomUUID();
+    // Use provided UUID or generate new one
+    const uuid = params.uuid || randomUUID();
     const created_at = new Date().toISOString();
 
     const stmt = this.db.prepare(`
       INSERT INTO history (
         uuid, created_at, tool_name, prompt, parameters,
-        output_paths, sample_count, size, quality, output_format
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        output_paths, sample_count, size, quality, output_format, params_hash
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -103,7 +103,8 @@ export class HistoryDatabase {
       params.sample_count,
       params.size || null,
       params.quality || null,
-      params.output_format || null
+      params.output_format || null,
+      params.params_hash || null
     );
 
     return uuid;
@@ -204,6 +205,7 @@ export class HistoryDatabase {
       size: row.size,
       quality: row.quality,
       output_format: row.output_format,
+      params_hash: row.params_hash,
     };
   }
 }

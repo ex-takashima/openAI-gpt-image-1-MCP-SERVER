@@ -154,7 +154,7 @@ export class JobManager {
 
       const params = JSON.parse(job.parameters);
 
-      let result: string;
+      let result: string | { content: Array<{ type: string; text?: string; data?: string; mimeType?: string; annotations?: any }> };
 
       // Execute the appropriate tool
       switch (job.tool_name) {
@@ -177,8 +177,13 @@ export class JobManager {
           throw new Error(`Unknown tool: ${job.tool_name}`);
       }
 
+      // Extract text from result (handle both string and content object)
+      const resultText = typeof result === 'string'
+        ? result
+        : result.content.find(c => c.type === 'text')?.text || '';
+
       // Extract history UUID from result if present
-      const historyMatch = result.match(/📝 History ID: ([a-f0-9-]+)/);
+      const historyMatch = resultText.match(/📝 History ID: ([a-f0-9-]+)/);
       const history_uuid = historyMatch ? historyMatch[1] : null;
 
       // Get output paths from history record

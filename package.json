@@ -43,7 +43,8 @@
     "@modelcontextprotocol/sdk": "^1.0.4",
     "better-sqlite3": "^12.4.1",
     "dotenv": "^16.4.7",
-    "openai": "^4.73.0"
+    "openai": "^4.73.0",
+    "sharp": "^0.33.5"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
