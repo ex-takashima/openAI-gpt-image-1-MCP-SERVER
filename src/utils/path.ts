@@ -8,6 +8,16 @@ import * as fs from 'fs/promises';
 import { debugLog } from './cost.js';
 
 /**
+ * Expand tilde (~) in path to home directory
+ */
+function expandTilde(filePath: string): string {
+  if (filePath.startsWith('~/') || filePath === '~') {
+    return path.join(os.homedir(), filePath.slice(2));
+  }
+  return filePath;
+}
+
+/**
  * Get default output directory (cross-platform)
  *
  * Priority:
@@ -20,8 +30,9 @@ export function getDefaultOutputDirectory(): string {
   // Check environment variable first
   const envDir = process.env.OPENAI_IMAGE_OUTPUT_DIR;
   if (envDir) {
-    debugLog(`Using custom output directory from env: ${envDir}`);
-    return path.resolve(envDir);
+    const expandedDir = expandTilde(envDir);
+    debugLog(`Using custom output directory from env: ${expandedDir}`);
+    return path.resolve(expandedDir);
   }
 
   // Use os.homedir() for cross-platform home directory
@@ -46,8 +57,9 @@ export function getDefaultInputDirectory(): string {
   // Check input-specific environment variable first
   const envInputDir = process.env.OPENAI_IMAGE_INPUT_DIR;
   if (envInputDir) {
-    debugLog(`Using custom input directory from env: ${envInputDir}`);
-    return path.resolve(envInputDir);
+    const expandedDir = expandTilde(envInputDir);
+    debugLog(`Using custom input directory from env: ${expandedDir}`);
+    return path.resolve(expandedDir);
   }
 
   // Fall back to output directory (same location)
