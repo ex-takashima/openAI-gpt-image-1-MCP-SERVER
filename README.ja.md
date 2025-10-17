@@ -38,6 +38,47 @@ OpenAI の gpt-image-1 API を使用して画像生成・編集を可能にす�
 
 > ⚠️ **重要**: gpt-image-1 を使用するには、OpenAI 組織の認証（Organization Verification）が必要です。
 
+## クイックスタート（5分）
+
+**前提条件:** Node.js 18+、組織認証済みの OpenAI API キー
+
+### 1. インストール
+
+```bash
+npm install -g openai-gpt-image-mcp-server
+```
+
+### 2. 設定
+
+Claude Desktop の設定ファイル（macOS の場合は `~/Library/Application Support/Claude/claude_desktop_config.json`）に以下を追加：
+
+```json
+{
+  "mcpServers": {
+    "openai-gpt-image": {
+      "command": "openai-gpt-image-mcp-server",
+      "env": {
+        "OPENAI_API_KEY": "sk-proj-your-key-here"
+      }
+    }
+  }
+}
+```
+
+> **Windows ユーザー**: コマンドは `openai-gpt-image-mcp-server.cmd` を使用してください。
+
+### 3. Claude Desktop を再起動
+
+Claude Desktop を完全に再起動してください（システムトレイ/メニューバーからも終了）。
+
+### 4. テスト
+
+Claude で試してみましょう：`「美しい夕日の風景を生成してください」`
+
+**完了！** 詳細なセットアップと高度な機能については、以下の [インストールガイド](#インストール) を参照してください。
+
+---
+
 ## インストール
 
 ### クイックインストール
