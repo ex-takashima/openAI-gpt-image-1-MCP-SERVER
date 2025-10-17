@@ -165,6 +165,8 @@ Add to your Claude Desktop configuration file:
 - `HISTORY_DB_PATH`: Custom database location (default: `~/.openai-gpt-image/history.db`)
 - `DEBUG`: Set to `1` for detailed logging
 
+> 📖 **Complete reference**: See [Environment Variables Reference](docs/ENVIRONMENT_VARIABLES.md) for detailed documentation of all variables.
+
 Restart Claude Desktop after saving.
 
 ### 4. Configure Claude Code
