@@ -58,3 +58,9 @@ temp/
 .gemini/settings.json
 /.claude
 CLAUDE.md
+/.claude
+/.claude
+/.claude/agents
+/docs/documentation-audits
+.claude/agents/documentation-organizer.md
+.claude/agents/code-analyzer-advanced.md

@@ -38,6 +38,47 @@ A Model Context Protocol (MCP) server that enables image generation and editing 
 
 > ⚠️ **Important**: Using gpt-image-1 requires OpenAI Organization Verification.
 
+## Quick Start (5 Minutes)
+
+**Prerequisites:** Node.js 18+, OpenAI API key with verified organization
+
+### 1. Install
+
+```bash
+npm install -g openai-gpt-image-mcp-server
+```
+
+### 2. Configure
+
+Add to your Claude Desktop config file (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
+```json
+{
+  "mcpServers": {
+    "openai-gpt-image": {
+      "command": "openai-gpt-image-mcp-server",
+      "env": {
+        "OPENAI_API_KEY": "sk-proj-your-key-here"
+      }
+    }
+  }
+}
+```
+
+> **Windows users**: Use `openai-gpt-image-mcp-server.cmd` as the command.
+
+### 3. Restart Claude Desktop
+
+Completely restart Claude Desktop (quit from system tray/menu bar).
+
+### 4. Test
+
+In Claude, try: `"Generate a beautiful sunset landscape"`
+
+**Done!** For detailed setup and advanced features, see [Full Installation Guide](#installation) below.
+
+---
+
 ## Installation
 
 ### Quick Install
