@@ -57,3 +57,4 @@ temp/
 .mcp.json
 .gemini/settings.json
 /.claude
+CLAUDE.md
