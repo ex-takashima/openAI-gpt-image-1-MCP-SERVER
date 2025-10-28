@@ -30,6 +30,15 @@ A Model Context Protocol (MCP) server that enables image generation and editing 
 - 📁 **Image Management**: List and organize generated images
 - 🔧 **Debug Mode**: Detailed logging for troubleshooting
 
+### Batch Processing (v1.0.5+)
+- 📦 **CLI Batch Tool**: Generate multiple images at once via command line
+- 🔄 **Concurrency Control**: Parallel processing with configurable limits
+- 📊 **Cost Estimation**: Preview costs before execution
+- ⚙️ **Retry Policy**: Automatic retry for failed jobs
+- 📝 **Multiple Output Formats**: Text or JSON results
+- 🤖 **GitHub Actions**: Automated batch generation from Issue comments
+- 💾 **Batch History**: Track and manage batch executions
+
 ## Prerequisites
 
 - **Node.js** v18 or higher
@@ -266,6 +275,88 @@ Show me my image generation history from the last week
 Start a background job to generate 10 high-quality landscape images.
 I want to continue working while it processes.
 ```
+
+## Batch Processing
+
+Generate multiple images at once using the CLI batch tool.
+
+### Quick Start
+
+```bash
+# Basic batch generation
+openai-gpt-image-batch examples/batch-simple.json
+
+# Estimate cost before execution
+openai-gpt-image-batch examples/batch-detailed.json --estimate-only
+
+# JSON output format
+openai-gpt-image-batch examples/batch-large-scale.json --format json > result.json
+```
+
+### Batch Configuration Example
+
+```json
+{
+  "jobs": [
+    {
+      "prompt": "A beautiful sunset over the ocean",
+      "output_path": "sunset.png",
+      "size": "1536x1024",
+      "quality": "high"
+    },
+    {
+      "prompt": "A futuristic city skyline",
+      "output_path": "city.png",
+      "quality": "medium"
+    }
+  ],
+  "max_concurrent": 3,
+  "timeout": 900000
+}
+```
+
+### CLI Options
+
+```bash
+openai-gpt-image-batch <config.json> [options]
+
+Options:
+  --output-dir <path>      Output directory
+  --format <text|json>     Output format (default: text)
+  --timeout <ms>           Timeout in milliseconds
+  --max-concurrent <n>     Max concurrent jobs (1-10)
+  --estimate-only          Estimate cost without executing
+  --help, -h               Show help
+  --version, -v            Show version
+```
+
+### Features
+
+- **Concurrency Control**: Parallel processing with configurable limits (1-10 concurrent jobs)
+- **Cost Estimation**: Preview costs before execution with `--estimate-only`
+- **Retry Policy**: Automatic retry for failed jobs (configurable)
+- **Multiple Output Formats**: Results in text or JSON format
+- **Timeout Management**: Prevent long-running executions
+- **Error Handling**: Continue processing even if individual jobs fail
+- **GitHub Actions Integration**: Automated batch generation from Issue comments
+
+### Sample Configurations
+
+Four example configurations are included:
+
+1. **batch-simple.json**: Basic batch with 3 images
+2. **batch-detailed.json**: Detailed configuration with custom settings (5 images)
+3. **batch-multi-variant.json**: Multi-variant generation (3-5 variants per prompt)
+4. **batch-large-scale.json**: Large-scale batch processing (10+ images)
+
+### Documentation
+
+For detailed documentation, see [docs/BATCH_PROCESSING.md](docs/BATCH_PROCESSING.md), which includes:
+- Comprehensive CLI usage guide
+- Batch configuration JSON format
+- GitHub Actions integration
+- Troubleshooting guide
+- Best practices
 
 ## Available Tools
 

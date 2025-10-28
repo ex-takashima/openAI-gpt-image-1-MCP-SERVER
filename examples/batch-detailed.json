@@ -1,0 +1,43 @@
+{
+  "jobs": [
+    {
+      "prompt": "A photorealistic portrait of a smiling person in natural lighting",
+      "output_path": "portrait.png",
+      "size": "1024x1536",
+      "quality": "high",
+      "output_format": "png"
+    },
+    {
+      "prompt": "A minimalist abstract art piece with geometric shapes",
+      "output_path": "abstract.png",
+      "size": "1024x1024",
+      "quality": "medium",
+      "output_format": "png"
+    },
+    {
+      "prompt": "A cozy coffee shop interior with warm lighting",
+      "output_path": "coffee_shop.png",
+      "size": "1536x1024",
+      "quality": "high",
+      "output_format": "png"
+    },
+    {
+      "prompt": "A vibrant tropical beach with palm trees",
+      "output_path": "beach.png",
+      "size": "1536x1024",
+      "quality": "medium",
+      "output_format": "jpeg"
+    },
+    {
+      "prompt": "An elegant logo design for a tech company",
+      "output_path": "logo.png",
+      "size": "1024x1024",
+      "quality": "high",
+      "output_format": "png",
+      "transparent_background": true
+    }
+  ],
+  "output_dir": "./generated-images",
+  "max_concurrent": 3,
+  "timeout": 900000
+}

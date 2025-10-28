@@ -1,0 +1,34 @@
+{
+  "jobs": [
+    {
+      "prompt": "A modern minimalist living room interior design",
+      "output_path": "living_room.png",
+      "size": "1536x1024",
+      "quality": "high",
+      "sample_count": 3
+    },
+    {
+      "prompt": "A professional business card design with clean typography",
+      "output_path": "business_card.png",
+      "size": "1024x1024",
+      "quality": "high",
+      "sample_count": 5,
+      "transparent_background": true
+    },
+    {
+      "prompt": "A vintage poster design for a jazz concert",
+      "output_path": "jazz_poster.png",
+      "size": "1024x1536",
+      "quality": "medium",
+      "sample_count": 4
+    }
+  ],
+  "output_dir": "./variants",
+  "max_concurrent": 2,
+  "timeout": 1200000,
+  "retry_policy": {
+    "max_retries": 2,
+    "retry_delay_ms": 5000,
+    "retry_on_errors": ["rate_limit", "timeout"]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "jobs": [
+    { "prompt": "A red sports car on a mountain road", "output_path": "car_red.png" },
+    { "prompt": "A blue sports car on a mountain road", "output_path": "car_blue.png" },
+    { "prompt": "A green sports car on a mountain road", "output_path": "car_green.png" },
+    { "prompt": "A yellow sports car on a mountain road", "output_path": "car_yellow.png" },
+    { "prompt": "A black sports car on a mountain road", "output_path": "car_black.png" },
+    { "prompt": "A white sports car on a mountain road", "output_path": "car_white.png" },
+    { "prompt": "A silver sports car on a mountain road", "output_path": "car_silver.png" },
+    { "prompt": "An orange sports car on a mountain road", "output_path": "car_orange.png" },
+    { "prompt": "A purple sports car on a mountain road", "output_path": "car_purple.png" },
+    { "prompt": "A pink sports car on a mountain road", "output_path": "car_pink.png" }
+  ],
+  "output_dir": "./car-variations",
+  "max_concurrent": 5,
+  "timeout": 1800000,
+  "retry_policy": {
+    "max_retries": 3,
+    "retry_delay_ms": 3000,
+    "retry_on_errors": ["rate_limit", "timeout", "server_error"]
+  }
+}

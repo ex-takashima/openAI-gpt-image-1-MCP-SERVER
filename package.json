@@ -1,10 +1,13 @@
 {
   "name": "openai-gpt-image-mcp-server",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "MCP server for OpenAI gpt-image-1 API - Generate and edit images using GPT-Image-1",
   "main": "dist/index.js",
   "type": "module",
-  "bin": "./dist/index.js",
+  "bin": {
+    "openai-gpt-image-mcp-server": "./dist/index.js",
+    "openai-gpt-image-batch": "./dist/cli/batch.js"
+  },
   "files": [
     "dist/**/*",
     "README.md",
@@ -16,6 +19,8 @@
     "prepare": "npm run build",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
+    "dev:batch": "tsx src/cli/batch.ts",
+    "batch": "node dist/cli/batch.js",
     "pack": "npm pack"
   },
   "keywords": [
@@ -27,7 +32,9 @@
     "model-context-protocol",
     "ai",
     "image-editing",
-    "text-to-image"
+    "text-to-image",
+    "batch-processing",
+    "cli"
   ],
   "author": "Junji Takashima <takajyun00@gmail.com>",
   "license": "MIT",
