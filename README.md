@@ -351,7 +351,11 @@ Four example configurations are included:
 
 ### Documentation
 
-For detailed documentation, see [docs/BATCH_PROCESSING.md](docs/BATCH_PROCESSING.md), which includes:
+For detailed documentation, see:
+- [docs/BATCH_PROCESSING.md](docs/BATCH_PROCESSING.md) - English
+- [docs/BATCH_PROCESSING.ja.md](docs/BATCH_PROCESSING.ja.md) - 日本語
+
+Documentation includes:
 - Comprehensive CLI usage guide
 - Batch configuration JSON format
 - GitHub Actions integration

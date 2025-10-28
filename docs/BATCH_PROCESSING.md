@@ -1,5 +1,7 @@
 # Batch Image Generation Guide
 
+English | [日本語](BATCH_PROCESSING.ja.md)
+
 This document explains the batch image generation feature for OpenAI GPT-Image-1 MCP Server.
 
 ## Table of Contents

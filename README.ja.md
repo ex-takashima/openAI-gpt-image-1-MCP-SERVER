@@ -30,6 +30,15 @@ OpenAI の gpt-image-1 API を使用して画像生成・編集を可能にす�
 - 📁 **画像管理**: 生成済み画像の整理と一覧表示
 - 🔧 **デバッグモード**: トラブルシューティング用の詳細ログ
 
+### バッチ処理機能 (v1.0.5+)
+- 📦 **CLIバッチツール**: コマンドラインから複数画像を一括生成
+- 🔄 **同時実行制御**: 設定可能な並列処理の制限
+- 📊 **コスト見積もり**: 実行前のコスト試算
+- ⚙️ **リトライポリシー**: 失敗したジョブの自動リトライ
+- 📝 **複数出力形式**: テキストまたはJSON形式での結果出力
+- 🤖 **GitHub Actions**: Issueコメントからの自動バッチ生成
+- 💾 **バッチ履歴**: バッチ実行の追跡と管理
+
 ## 前提条件
 
 - **Node.js** v18 以上
@@ -264,6 +273,92 @@ Claude Desktop の設定ファイルに以下を追加：
 高品質な風景画像を10枚生成するバックグラウンドジョブを開始してください。
 作業を続けながら処理させたいです。
 ```
+
+## バッチ処理
+
+CLIバッチツールを使用して、複数の画像を一度に生成します。
+
+### クイックスタート
+
+```bash
+# 基本的なバッチ生成
+openai-gpt-image-batch examples/batch-simple.json
+
+# 実行前にコスト見積もり
+openai-gpt-image-batch examples/batch-detailed.json --estimate-only
+
+# JSON形式で結果を出力
+openai-gpt-image-batch examples/batch-large-scale.json --format json > result.json
+```
+
+### バッチ設定の例
+
+```json
+{
+  "jobs": [
+    {
+      "prompt": "海に沈む美しい夕日",
+      "output_path": "sunset.png",
+      "size": "1536x1024",
+      "quality": "high"
+    },
+    {
+      "prompt": "未来的な都市のスカイライン",
+      "output_path": "city.png",
+      "quality": "medium"
+    }
+  ],
+  "max_concurrent": 3,
+  "timeout": 900000
+}
+```
+
+### CLIオプション
+
+```bash
+openai-gpt-image-batch <config.json> [options]
+
+Options:
+  --output-dir <path>      出力ディレクトリ
+  --format <text|json>     出力形式（デフォルト: text）
+  --timeout <ms>           タイムアウト（ミリ秒）
+  --max-concurrent <n>     最大同時実行数（1-10）
+  --estimate-only          コスト見積もりのみ実行
+  --help, -h               ヘルプを表示
+  --version, -v            バージョンを表示
+```
+
+### 機能
+
+- **同時実行制御**: 設定可能な並列処理制限（1-10の同時ジョブ）
+- **コスト見積もり**: `--estimate-only`で実行前のコスト試算
+- **リトライポリシー**: 失敗したジョブの自動リトライ（設定可能）
+- **複数出力形式**: テキストまたはJSON形式での結果出力
+- **タイムアウト管理**: 長時間実行の防止
+- **エラーハンドリング**: 個別ジョブが失敗しても継続実行
+- **GitHub Actions統合**: Issueコメントからの自動バッチ生成
+
+### サンプル設定
+
+4つのサンプル設定ファイルが含まれています：
+
+1. **batch-simple.json**: 基本的なバッチ（3画像）
+2. **batch-detailed.json**: カスタム設定付き詳細設定（5画像）
+3. **batch-multi-variant.json**: マルチバリアント生成（プロンプトごとに3-5バリアント）
+4. **batch-large-scale.json**: 大規模バッチ処理（10画像以上）
+
+### ドキュメント
+
+詳細なドキュメントについては以下を参照してください：
+- [docs/BATCH_PROCESSING.md](docs/BATCH_PROCESSING.md) - English
+- [docs/BATCH_PROCESSING.ja.md](docs/BATCH_PROCESSING.ja.md) - 日本語
+
+ドキュメントには以下が含まれています：
+- 包括的なCLI使用ガイド
+- バッチ設定のJSON形式
+- GitHub Actions統合
+- トラブルシューティングガイド
+- ベストプラクティス
 
 ## 利用可能なツール
 
