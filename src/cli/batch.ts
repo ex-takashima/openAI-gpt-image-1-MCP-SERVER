@@ -158,7 +158,7 @@ For more information, see: https://github.com/ex-takashima/openAI-gpt-image-1-MC
  * Show version information
  */
 function showVersionInfo(): void {
-  console.log('openai-gpt-image-batch version 1.0.5');
+  console.log('openai-gpt-image-batch version 1.1.0');
 }
 
 /**

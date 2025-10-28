@@ -30,7 +30,7 @@ A Model Context Protocol (MCP) server that enables image generation and editing 
 - 📁 **Image Management**: List and organize generated images
 - 🔧 **Debug Mode**: Detailed logging for troubleshooting
 
-### Batch Processing (v1.0.5+)
+### Batch Processing (v1.1.0+)
 - 📦 **CLI Batch Tool**: Generate multiple images at once via command line
 - 🔄 **Concurrency Control**: Parallel processing with configurable limits
 - 📊 **Cost Estimation**: Preview costs before execution
