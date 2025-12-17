@@ -39,6 +39,10 @@ export interface GenerateImageParams {
   sample_count?: number;
   return_base64?: boolean;
   include_thumbnail?: boolean;
+  /** Reference image as base64 string (gpt-image-1.5 only) */
+  reference_image_base64?: string;
+  /** Reference image file path (gpt-image-1.5 only) */
+  reference_image_path?: string;
 }
 
 /**
