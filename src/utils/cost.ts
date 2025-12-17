@@ -1,6 +1,6 @@
 /**
  * Cost calculation utilities for OpenAI gpt-image-1 API
- * Pricing as of 2025-10 (subject to change - check official OpenAI pricing)
+ * Pricing as of 2025-12 (subject to change - check official OpenAI pricing)
  */
 
 export interface CostBreakdown {
@@ -17,14 +17,15 @@ export interface ImageParams {
   size?: string;
   quality?: string;
   format?: string;
+  model?: string;
 }
 
 // Pricing constants (USD per token)
 const TEXT_INPUT_COST_PER_TOKEN = 0.00001; // $0.01 per 1K tokens (estimated)
 const TEXT_OUTPUT_COST_PER_TOKEN = 0.00001;
 
-// Image generation costs (estimated based on quality and size)
-const IMAGE_COST_BASE: Record<string, Record<string, number>> = {
+// Image generation costs for gpt-image-1 (estimated based on quality and size)
+const IMAGE_COST_GPT_IMAGE_1: Record<string, Record<string, number>> = {
   low: {
     '1024x1024': 0.015,
     '1024x1536': 0.020,
@@ -42,6 +43,26 @@ const IMAGE_COST_BASE: Record<string, Record<string, number>> = {
   },
 };
 
+// Image generation costs for gpt-image-1.5 (20% cheaper than gpt-image-1)
+const GPT_IMAGE_1_5_DISCOUNT = 0.8; // 20% cheaper
+const IMAGE_COST_GPT_IMAGE_1_5: Record<string, Record<string, number>> = {
+  low: {
+    '1024x1024': 0.015 * GPT_IMAGE_1_5_DISCOUNT,
+    '1024x1536': 0.020 * GPT_IMAGE_1_5_DISCOUNT,
+    '1536x1024': 0.020 * GPT_IMAGE_1_5_DISCOUNT,
+  },
+  medium: {
+    '1024x1024': 0.05 * GPT_IMAGE_1_5_DISCOUNT,
+    '1024x1536': 0.065 * GPT_IMAGE_1_5_DISCOUNT,
+    '1536x1024': 0.065 * GPT_IMAGE_1_5_DISCOUNT,
+  },
+  high: {
+    '1024x1024': 0.18 * GPT_IMAGE_1_5_DISCOUNT,
+    '1024x1536': 0.20 * GPT_IMAGE_1_5_DISCOUNT,
+    '1536x1024': 0.20 * GPT_IMAGE_1_5_DISCOUNT,
+  },
+};
+
 /**
  * Calculate the estimated cost for image generation
  */
@@ -56,8 +77,14 @@ export function calculateCost(
 
   const quality = params.quality || 'medium';
   const size = params.size || '1024x1024';
+  const model = params.model || 'gpt-image-1';
 
-  const imageGenerationCost = IMAGE_COST_BASE[quality]?.[size] || 0.05;
+  // Select pricing table based on model
+  const pricingTable = model === 'gpt-image-1.5'
+    ? IMAGE_COST_GPT_IMAGE_1_5
+    : IMAGE_COST_GPT_IMAGE_1;
+
+  const imageGenerationCost = pricingTable[quality]?.[size] || 0.05;
 
   return {
     inputTokens,
@@ -86,10 +113,11 @@ export function formatCostBreakdown(cost: CostBreakdown, params: ImageParams): s
   lines.push(`  - Text processing: $${cost.textProcessingCost.toFixed(6)}`);
   lines.push(`  - Image generation: $${cost.imageGenerationCost.toFixed(6)}`);
 
+  const model = params.model || 'gpt-image-1';
   const quality = params.quality || 'medium';
   const size = params.size || '1024x1024';
   const format = params.format || 'png';
-  lines.push(`\n📏 Parameters: ${quality} quality | ${size} | ${format}`);
+  lines.push(`\n📏 Parameters: ${model} | ${quality} quality | ${size} | ${format}`);
 
   return lines.join('\n');
 }

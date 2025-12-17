@@ -26,6 +26,7 @@ export async function transformImage(
     reference_image_base64,
     reference_image_path,
     output_path = 'transformed_image.png',
+    model = 'gpt-image-1',
     size = 'auto',
     quality = 'auto',
     output_format = 'png',
@@ -33,6 +34,7 @@ export async function transformImage(
     sample_count = 1,
     return_base64 = false,
     include_thumbnail,
+    input_fidelity,
   } = params;
 
   // Normalize and validate output path (cross-platform)
@@ -91,13 +93,14 @@ export async function transformImage(
 
     // Build params object for hashing (all generation parameters)
     const paramsForHash = {
-      model: 'gpt-image-1',
+      model,
       prompt,
       size,
       quality,
       output_format,
       moderation,
       sample_count,
+      input_fidelity,
     };
 
     // Calculate parameter hash for integrity verification
@@ -128,7 +131,7 @@ export async function transformImage(
     // Build request parameters
     // For transformation, we use the edit endpoint without mask
     const requestParams: any = {
-      model: 'gpt-image-1',
+      model,
       prompt,
       image: referenceImageFile,
       n: sample_count,
@@ -148,6 +151,11 @@ export async function transformImage(
 
     if (moderation !== 'auto') {
       requestParams.moderation = moderation;
+    }
+
+    // input_fidelity is only supported for gpt-image-1.5
+    if (input_fidelity && model === 'gpt-image-1.5') {
+      requestParams.input_fidelity = input_fidelity;
     }
 
     debugLog('Request params:', JSON.stringify({ ...requestParams, image: '[REDACTED]' }, null, 2));
@@ -201,7 +209,7 @@ export async function transformImage(
         uuid,
         paramsHash,
         'transform_image',
-        'gpt-image-1',
+        model,
         actualSize,
         actualQuality,
         prompt,
@@ -234,12 +242,14 @@ export async function transformImage(
       size: actualSize,
       quality: actualQuality,
       format: output_format,
+      model,
     });
 
     const costInfo = formatCostBreakdown(cost, {
       size: actualSize,
       quality: actualQuality,
       format: output_format,
+      model,
     });
 
     // Calculate total tokens
@@ -252,11 +262,13 @@ export async function transformImage(
       tool_name: 'transform_image',
       prompt,
       parameters: {
+        model,
         size,
         quality,
         output_format,
         moderation,
         sample_count,
+        input_fidelity,
       },
       output_paths: savedPaths,
       sample_count,
@@ -330,7 +342,8 @@ export async function transformImage(
       } else if (status === 403) {
         throw new McpError(
           ErrorCode.InvalidRequest,
-          'Access denied. Your organization must be verified to use gpt-image-1.'
+          'Access denied. Your organization must be verified to use GPT image models. ' +
+            'Please complete organization verification at: https://platform.openai.com/settings/organization/general'
         );
       } else if (status === 400) {
         if (message.includes('content_policy_violation')) {

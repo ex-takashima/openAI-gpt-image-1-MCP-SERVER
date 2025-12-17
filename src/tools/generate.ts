@@ -21,6 +21,7 @@ export async function generateImage(
   const {
     prompt,
     output_path = 'generated_image.png',
+    model = 'gpt-image-1',
     size = 'auto',
     quality = 'auto',
     output_format = 'png',
@@ -87,7 +88,7 @@ export async function generateImage(
 
     // Build params object for hashing (all generation parameters)
     const paramsForHash = {
-      model: 'gpt-image-1',
+      model,
       prompt,
       size,
       quality,
@@ -105,7 +106,7 @@ export async function generateImage(
 
     // Build request parameters
     const requestParams: any = {
-      model: 'gpt-image-1',
+      model,
       prompt,
       n: sample_count,
     };
@@ -180,7 +181,7 @@ export async function generateImage(
         uuid,
         paramsHash,
         'generate_image',
-        'gpt-image-1',
+        model,
         actualSize,
         actualQuality,
         prompt,
@@ -213,12 +214,14 @@ export async function generateImage(
       size: actualSize,
       quality: actualQuality,
       format: output_format,
+      model,
     });
 
     const costInfo = formatCostBreakdown(cost, {
       size: actualSize,
       quality: actualQuality,
       format: output_format,
+      model,
     });
 
     // Calculate total tokens
@@ -231,6 +234,7 @@ export async function generateImage(
       tool_name: 'generate_image',
       prompt,
       parameters: {
+        model,
         size,
         quality,
         output_format,
@@ -310,7 +314,7 @@ export async function generateImage(
       } else if (status === 403) {
         throw new McpError(
           ErrorCode.InvalidRequest,
-          'Access denied. Your organization must be verified to use gpt-image-1. ' +
+          'Access denied. Your organization must be verified to use GPT image models. ' +
             'Please complete organization verification at: https://platform.openai.com/settings/organization/general'
         );
       } else if (status === 400) {

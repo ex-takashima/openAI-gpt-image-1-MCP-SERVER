@@ -8,6 +8,92 @@ import * as fs from 'fs/promises';
 import { debugLog } from './cost.js';
 
 /**
+ * Claude Desktop virtual path patterns
+ * These paths are used by Claude Desktop to reference cloud-stored files
+ * and do not exist on the local filesystem
+ */
+const CLAUDE_DESKTOP_VIRTUAL_PATHS = [
+  '/mnt/user-data/uploads/',
+  '/mnt/transcripts/',
+  '/mnt/user-data/',
+];
+
+/**
+ * Check if a path is a Claude Desktop virtual path
+ * Claude Desktop uploads are stored in Anthropic's cloud, not locally
+ */
+function isClaudeDesktopVirtualPath(filePath: string): boolean {
+  const normalizedPath = filePath.replace(/\\/g, '/').toLowerCase();
+  return CLAUDE_DESKTOP_VIRTUAL_PATHS.some(vp => normalizedPath.startsWith(vp.toLowerCase()));
+}
+
+/**
+ * Check if a path is within a system temp directory
+ * This allows Claude Desktop uploaded images to be accessed
+ *
+ * Recognized temp directories:
+ * - os.tmpdir() (cross-platform)
+ * - macOS: /private/var/folders/, /var/folders/, /tmp
+ * - Windows: AppData\Local\Temp
+ * - Linux: /tmp, /var/tmp
+ */
+function isSystemTempPath(filePath: string): boolean {
+  const normalizedPath = path.resolve(filePath).toLowerCase();
+
+  // Get system temp directory
+  const systemTemp = os.tmpdir().toLowerCase();
+  if (normalizedPath.startsWith(systemTemp)) {
+    debugLog(`[Path] Allowed: path is in system temp directory (${systemTemp})`);
+    return true;
+  }
+
+  // Platform-specific temp directories
+  const platform = os.platform();
+
+  if (platform === 'darwin') {
+    // macOS: /private/var/folders/ (where Claude Desktop stores uploads)
+    const macTempPaths = [
+      '/private/var/folders/',
+      '/var/folders/',
+      '/tmp/',
+    ];
+    for (const tempPath of macTempPaths) {
+      if (normalizedPath.startsWith(tempPath)) {
+        debugLog(`[Path] Allowed: path is in macOS temp directory (${tempPath})`);
+        return true;
+      }
+    }
+  } else if (platform === 'win32') {
+    // Windows: various temp locations
+    const windowsTempPaths = [
+      '\\appdata\\local\\temp',
+      '\\temp',
+      '\\tmp',
+    ];
+    for (const tempPath of windowsTempPaths) {
+      if (normalizedPath.includes(tempPath)) {
+        debugLog(`[Path] Allowed: path is in Windows temp directory (${tempPath})`);
+        return true;
+      }
+    }
+  } else {
+    // Linux and others
+    const linuxTempPaths = [
+      '/tmp/',
+      '/var/tmp/',
+    ];
+    for (const tempPath of linuxTempPaths) {
+      if (normalizedPath.startsWith(tempPath)) {
+        debugLog(`[Path] Allowed: path is in Linux temp directory (${tempPath})`);
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
  * Expand tilde (~) in path to home directory
  */
 function expandTilde(filePath: string): string {
@@ -128,9 +214,11 @@ export async function normalizeAndValidatePath(outputPath: string): Promise<stri
 /**
  * Normalize and validate input image path (cross-platform)
  *
+ * - Claude Desktop virtual paths are resolved automatically
  * - Absolute paths: resolved and validated against base directory
  * - Relative paths: resolved relative to default input directory
- * - All paths must be within the base directory (security: prevents path traversal)
+ * - System temp directories are automatically allowed (for Claude Desktop uploads)
+ * - Other paths must be within the base directory (security: prevents path traversal)
  * - Validates file exists
  *
  * @param inputPath - Input file path (absolute or relative)
@@ -139,6 +227,26 @@ export async function normalizeAndValidatePath(outputPath: string): Promise<stri
  */
 export async function normalizeInputPath(inputPath: string): Promise<string> {
   debugLog(`Normalizing input path: ${inputPath}`);
+
+  // Check if this is a Claude Desktop virtual path (e.g., /mnt/user-data/uploads/...)
+  // Claude Desktop uploads are stored in Anthropic's cloud, not locally
+  if (isClaudeDesktopVirtualPath(inputPath)) {
+    debugLog(`[Path] Detected Claude Desktop virtual path: ${inputPath}`);
+    const errorMsg =
+      `Claude Desktop のアップロード画像は Anthropic のクラウドに保存されており、\n` +
+      `MCP ツールから直接アクセスすることはできません。\n` +
+      `\n` +
+      `検出されたパス: ${inputPath}\n` +
+      `\n` +
+      `【代替案】\n` +
+      `1. 画像をローカルに保存してから、そのパスを指定してください\n` +
+      `2. OPENAI_IMAGE_INPUT_DIR で指定したディレクトリに画像を配置してください\n` +
+      `\n` +
+      `例: "この画像を ~/Downloads/openai-images/input.jpg に保存して、\n` +
+      `    そのパスで edit_image を実行してください"`;
+    debugLog(errorMsg);
+    throw new Error(errorMsg);
+  }
 
   const defaultDir = getDefaultInputDirectory();
   let absolutePath: string;
@@ -153,8 +261,24 @@ export async function normalizeInputPath(inputPath: string): Promise<string> {
     debugLog(`Resolved relative path to: ${absolutePath}`);
   }
 
-  // Security check: Ensure path is within base directory (prevent path traversal)
   const normalizedPath = path.resolve(absolutePath);
+
+  // Check if path is in system temp directory (allows Claude Desktop uploads)
+  if (isSystemTempPath(normalizedPath)) {
+    debugLog(`[Path] System temp path allowed: ${normalizedPath}`);
+    // Skip base directory check for temp paths, but still validate file exists
+    try {
+      await fs.access(normalizedPath);
+      debugLog(`File exists: ${normalizedPath}`);
+    } catch (error) {
+      const errorMsg = `Input file not found: ${normalizedPath}`;
+      debugLog(errorMsg);
+      throw new Error(errorMsg);
+    }
+    return normalizedPath;
+  }
+
+  // Security check: Ensure path is within base directory (prevent path traversal)
   const normalizedBase = path.resolve(defaultDir);
 
   if (!normalizedPath.startsWith(normalizedBase + path.sep) && normalizedPath !== normalizedBase) {
@@ -162,7 +286,8 @@ export async function normalizeInputPath(inputPath: string): Promise<string> {
       `Security error: Access denied. All paths must be within the configured input directory.\n` +
       `Base directory: ${normalizedBase}\n` +
       `Attempted path: ${normalizedPath}\n` +
-      `Use OPENAI_IMAGE_INPUT_DIR environment variable to change the base directory.`;
+      `Use OPENAI_IMAGE_INPUT_DIR environment variable to change the base directory.\n` +
+      `Note: System temp directories and Claude Desktop virtual paths are automatically allowed.`;
     debugLog(errorMsg);
     throw new Error(errorMsg);
   }

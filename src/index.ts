@@ -56,7 +56,7 @@ const openai = new OpenAI({
 const server = new Server(
   {
     name: 'openai-gpt-image-mcp-server',
-    version: '1.1.0',
+    version: '1.2.0',
   },
   {
     capabilities: {
@@ -70,8 +70,8 @@ const TOOLS = [
   {
     name: 'generate_image',
     description:
-      'Generate a new image from a text prompt using OpenAI gpt-image-1. ' +
-      'Supports various sizes, quality levels, and output formats. ' +
+      'Generate a new image from a text prompt using OpenAI GPT image models. ' +
+      'Supports gpt-image-1 and gpt-image-1.5 (faster, cheaper, better text rendering). ' +
       'Automatically calculates and reports token usage and cost.',
     inputSchema: {
       type: 'object',
@@ -83,6 +83,11 @@ const TOOLS = [
         output_path: {
           type: 'string',
           description: 'Output file path (default: generated_image.png)',
+        },
+        model: {
+          type: 'string',
+          enum: ['gpt-image-1', 'gpt-image-1.5'],
+          description: 'Model to use. gpt-image-1.5 is 4x faster, 20% cheaper, with better text rendering (default: gpt-image-1)',
         },
         size: {
           type: 'string',
@@ -129,9 +134,9 @@ const TOOLS = [
   {
     name: 'edit_image',
     description:
-      'Edit an existing image using inpainting with OpenAI gpt-image-1. ' +
+      'Edit an existing image using inpainting with OpenAI GPT image models. ' +
       'Requires a reference image and optional mask image (transparent areas are edited). ' +
-      'Automatically calculates and reports token usage and cost.',
+      'gpt-image-1.5 supports input_fidelity for better face/logo preservation.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -159,6 +164,11 @@ const TOOLS = [
           type: 'string',
           description: 'Output file path (default: edited_image.png)',
         },
+        model: {
+          type: 'string',
+          enum: ['gpt-image-1', 'gpt-image-1.5'],
+          description: 'Model to use. gpt-image-1.5 supports input_fidelity for better preservation (default: gpt-image-1)',
+        },
         size: {
           type: 'string',
           enum: ['1024x1024', '1024x1536', '1536x1024', 'auto'],
@@ -193,6 +203,11 @@ const TOOLS = [
           type: 'boolean',
           description: 'Include thumbnail preview in MCP response for LLM recognition (default: false, overrides OPENAI_IMAGE_THUMBNAIL env var)',
         },
+        input_fidelity: {
+          type: 'string',
+          enum: ['low', 'high'],
+          description: 'Input fidelity for preserving faces/logos. Only works with gpt-image-1.5. High uses more tokens but better preserves details (default: low)',
+        },
       },
       required: ['prompt'],
     },
@@ -200,9 +215,9 @@ const TOOLS = [
   {
     name: 'transform_image',
     description:
-      'Transform an existing image to a new style or interpretation using OpenAI gpt-image-1. ' +
+      'Transform an existing image to a new style or interpretation using OpenAI GPT image models. ' +
       'Takes a reference image and a prompt describing the desired transformation. ' +
-      'Automatically calculates and reports token usage and cost.',
+      'gpt-image-1.5 supports input_fidelity for better face/logo preservation.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -222,6 +237,11 @@ const TOOLS = [
           type: 'string',
           description: 'Output file path (default: transformed_image.png)',
         },
+        model: {
+          type: 'string',
+          enum: ['gpt-image-1', 'gpt-image-1.5'],
+          description: 'Model to use. gpt-image-1.5 supports input_fidelity for better preservation (default: gpt-image-1)',
+        },
         size: {
           type: 'string',
           enum: ['1024x1024', '1024x1536', '1536x1024', 'auto'],
@@ -255,6 +275,11 @@ const TOOLS = [
         include_thumbnail: {
           type: 'boolean',
           description: 'Include thumbnail preview in MCP response for LLM recognition (default: false, overrides OPENAI_IMAGE_THUMBNAIL env var)',
+        },
+        input_fidelity: {
+          type: 'string',
+          enum: ['low', 'high'],
+          description: 'Input fidelity for preserving faces/logos. Only works with gpt-image-1.5. High uses more tokens but better preserves details (default: low)',
         },
       },
       required: ['prompt'],
@@ -361,6 +386,11 @@ const TOOLS = [
           type: 'string',
           description: 'Output file path',
         },
+        model: {
+          type: 'string',
+          enum: ['gpt-image-1', 'gpt-image-1.5'],
+          description: 'Model to use (default: gpt-image-1)',
+        },
         size: {
           type: 'string',
           enum: ['1024x1024', '1024x1536', '1536x1024', 'auto'],
@@ -381,6 +411,11 @@ const TOOLS = [
           description: 'Number of images (1-10)',
           minimum: 1,
           maximum: 10,
+        },
+        input_fidelity: {
+          type: 'string',
+          enum: ['low', 'high'],
+          description: 'Input fidelity for edit/transform (gpt-image-1.5 only)',
         },
       },
       required: ['tool_name', 'prompt'],
