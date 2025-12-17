@@ -26,6 +26,9 @@ export type InputFidelity = 'low' | 'high';
 
 /**
  * Parameters for generate_image tool
+ * Note: Reference images are NOT supported in the Images API (gpt-image-1/1.5).
+ * Use edit_image or transform_image for reference-based generation,
+ * or use the Responses API with gpt-4.1+ for reference image support.
  */
 export interface GenerateImageParams {
   prompt: string;
@@ -39,10 +42,6 @@ export interface GenerateImageParams {
   sample_count?: number;
   return_base64?: boolean;
   include_thumbnail?: boolean;
-  /** Reference image as base64 string (gpt-image-1.5 only) */
-  reference_image_base64?: string;
-  /** Reference image file path (gpt-image-1.5 only) */
-  reference_image_path?: string;
 }
 
 /**

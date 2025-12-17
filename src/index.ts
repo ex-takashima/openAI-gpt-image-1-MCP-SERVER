@@ -56,7 +56,7 @@ const openai = new OpenAI({
 const server = new Server(
   {
     name: 'openai-gpt-image-mcp-server',
-    version: '1.2.2',
+    version: '1.2.3',
   },
   {
     capabilities: {
@@ -72,7 +72,6 @@ const TOOLS = [
     description:
       'Generate a new image from a text prompt using OpenAI GPT image models. ' +
       'Supports gpt-image-1 and gpt-image-1.5 (faster, cheaper, better text rendering). ' +
-      'gpt-image-1.5 supports reference images for style/composition guidance. ' +
       'Automatically calculates and reports token usage and cost.',
     inputSchema: {
       type: 'object',
@@ -127,14 +126,6 @@ const TOOLS = [
         include_thumbnail: {
           type: 'boolean',
           description: 'Include thumbnail preview in MCP response for LLM recognition (default: false, overrides OPENAI_IMAGE_THUMBNAIL env var)',
-        },
-        reference_image_base64: {
-          type: 'string',
-          description: 'Base64 encoded reference image for style/composition guidance (gpt-image-1.5 only)',
-        },
-        reference_image_path: {
-          type: 'string',
-          description: 'Path to reference image file for style/composition guidance (gpt-image-1.5 only)',
         },
       },
       required: ['prompt'],

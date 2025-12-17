@@ -2,24 +2,21 @@
  * Generate image tool - Create images from text prompts using gpt-image-1/1.5
  */
 
-import OpenAI, { toFile } from 'openai';
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import OpenAI from 'openai';
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { saveBase64Image, validateImageFormat, validateImageSize, validateQuality } from '../utils/image.js';
 import { calculateCost, formatCostBreakdown, debugLog } from '../utils/cost.js';
-import { normalizeAndValidatePath, getDisplayPath, generateUniqueFilePath, normalizeInputPath } from '../utils/path.js';
+import { normalizeAndValidatePath, getDisplayPath, generateUniqueFilePath } from '../utils/path.js';
 import { getDatabase } from '../utils/database.js';
 import { saveImageWithMetadata, generateImageUUID, calculateParamsHash, buildMetadataObject } from '../utils/metadata.js';
 import { generateThumbnailDataFromFile, createThumbnailContent, isThumbnailEnabled } from '../utils/thumbnail.js';
-import { getMimeTypeFromPath } from '../utils/mime.js';
 import type { GenerateImageParams } from '../types/tools.js';
 
 export async function generateImage(
   openai: OpenAI,
   params: GenerateImageParams
 ): Promise<string | { content: Array<{ type: string; text?: string; data?: string; mimeType?: string; annotations?: any }> }> {
-  debugLog('Generate image called with params:', { ...params, reference_image_base64: params.reference_image_base64 ? '[REDACTED]' : undefined });
+  debugLog('Generate image called with params:', params);
 
   const {
     prompt,
@@ -33,8 +30,6 @@ export async function generateImage(
     sample_count = 1,
     return_base64 = false,
     include_thumbnail,
-    reference_image_base64,
-    reference_image_path,
   } = params;
 
   // Normalize and validate output path (cross-platform)
@@ -86,14 +81,6 @@ export async function generateImage(
     );
   }
 
-  // Reference image is only supported for gpt-image-1.5
-  if ((reference_image_base64 || reference_image_path) && model !== 'gpt-image-1.5') {
-    throw new McpError(
-      ErrorCode.InvalidParams,
-      'Reference image is only supported with gpt-image-1.5 model. Please set model to "gpt-image-1.5" to use reference images.'
-    );
-  }
-
   try {
     // Generate UUID for this image generation
     const uuid = generateImageUUID();
@@ -109,29 +96,11 @@ export async function generateImage(
       transparent_background,
       moderation,
       sample_count,
-      has_reference_image: !!(reference_image_base64 || reference_image_path),
     };
 
     // Calculate parameter hash for integrity verification
     const paramsHash = calculateParamsHash(paramsForHash);
     debugLog(`[Metadata] Calculated params hash: ${paramsHash.substring(0, 16)}...`);
-
-    // Prepare reference image if provided (gpt-image-1.5 only)
-    let referenceImageFile: any;
-    if (reference_image_path) {
-      debugLog(`Loading reference image from file: ${reference_image_path}`);
-      const resolvedPath = await normalizeInputPath(reference_image_path);
-      debugLog(`Resolved reference image path: ${resolvedPath}`);
-      const buffer = await fs.readFile(resolvedPath);
-      const mimeType = getMimeTypeFromPath(resolvedPath);
-      const fileName = path.basename(resolvedPath);
-      referenceImageFile = await toFile(buffer, fileName, { type: mimeType });
-      debugLog(`Reference image loaded with MIME type: ${mimeType}`);
-    } else if (reference_image_base64) {
-      debugLog('Converting reference image from base64 to File object');
-      const buffer = Buffer.from(reference_image_base64, 'base64');
-      referenceImageFile = await toFile(buffer, 'reference.png', { type: 'image/png' });
-    }
 
     debugLog('Calling OpenAI API...');
 
@@ -162,13 +131,7 @@ export async function generateImage(
       requestParams.moderation = moderation;
     }
 
-    // Add reference image for gpt-image-1.5
-    if (referenceImageFile) {
-      requestParams.image = referenceImageFile;
-      debugLog('Reference image added to request');
-    }
-
-    debugLog('Request params:', JSON.stringify({ ...requestParams, image: requestParams.image ? '[REDACTED]' : undefined }, null, 2));
+    debugLog('Request params:', JSON.stringify(requestParams, null, 2));
 
     const response = await openai.images.generate(requestParams);
 
@@ -278,7 +241,6 @@ export async function generateImage(
         transparent_background,
         moderation,
         sample_count,
-        has_reference_image: !!(reference_image_base64 || reference_image_path),
       },
       output_paths: savedPaths,
       sample_count,
@@ -302,12 +264,11 @@ export async function generateImage(
 
     // Build result message
     let resultText: string;
-    const refImageNote = referenceImageFile ? ' (with reference image)' : '';
     if (sample_count === 1) {
       const displayPath = getDisplayPath(savedPaths[0]);
-      resultText = `Image generated successfully${refImageNote}: ${displayPath}\n${costInfo}\n\n📝 History ID: ${historyUuid}`;
+      resultText = `Image generated successfully: ${displayPath}\n${costInfo}\n\n📝 History ID: ${historyUuid}`;
     } else {
-      resultText = `${sample_count} images generated successfully${refImageNote}:\n`;
+      resultText = `${sample_count} images generated successfully:\n`;
       savedPaths.forEach((filePath, idx) => {
         resultText += `  ${idx + 1}. ${getDisplayPath(filePath)}\n`;
       });
