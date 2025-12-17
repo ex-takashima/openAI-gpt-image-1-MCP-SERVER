@@ -1,4 +1,4 @@
-# OpenAI GPT-Image-1 MCP Server
+# OpenAI GPT-Image MCP Server
 
 [![npm version](https://img.shields.io/npm/v/openai-gpt-image-mcp-server.svg)](https://www.npmjs.com/package/openai-gpt-image-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -6,7 +6,7 @@
 
 English | [日本語](README.ja.md)
 
-A Model Context Protocol (MCP) server that enables image generation and editing using OpenAI's gpt-image-1 API. Works seamlessly with Claude Desktop, Claude Code, and other MCP-compatible clients.
+A Model Context Protocol (MCP) server that enables image generation and editing using OpenAI's GPT Image API (gpt-image-1 and gpt-image-1.5). Works seamlessly with Claude Desktop, Claude Code, and other MCP-compatible clients.
 
 ## Features
 
@@ -29,6 +29,12 @@ A Model Context Protocol (MCP) server that enables image generation and editing 
 - 🛡️ **Content Filtering**: Built-in safety filters
 - 📁 **Image Management**: List and organize generated images
 - 🔧 **Debug Mode**: Detailed logging for troubleshooting
+
+### GPT-Image-1.5 Support (v1.2.0+)
+- 🚀 **gpt-image-1.5 Model**: 4x faster generation, 20% lower cost
+- 📝 **Better Text Rendering**: Improved accuracy for text in images
+- 👤 **Input Fidelity**: High-fidelity face/logo preservation (edit & transform)
+- 🔧 **Model Selection**: Choose between gpt-image-1 and gpt-image-1.5
 
 ### Batch Processing (v1.1.0+)
 - 📦 **CLI Batch Tool**: Generate multiple images at once via command line

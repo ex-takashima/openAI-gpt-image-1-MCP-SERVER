@@ -1,4 +1,4 @@
-# OpenAI GPT-Image-1 MCP Server
+# OpenAI GPT-Image MCP Server
 
 [![npm version](https://img.shields.io/npm/v/openai-gpt-image-mcp-server.svg)](https://www.npmjs.com/package/openai-gpt-image-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -6,7 +6,7 @@
 
 [English](README.md) | 日本語
 
-OpenAI の gpt-image-1 API を使用して画像生成・編集を可能にする MCP（Model Context Protocol）サーバーです。Claude Desktop、Claude Code などの MCP 対応クライアントとシームレスに連携します。
+OpenAI の GPT Image API（gpt-image-1 および gpt-image-1.5）を使用して画像生成・編集を可能にする MCP（Model Context Protocol）サーバーです。Claude Desktop、Claude Code などの MCP 対応クライアントとシームレスに連携します。
 
 ## 特徴
 
@@ -29,6 +29,12 @@ OpenAI の gpt-image-1 API を使用して画像生成・編集を可能にす�
 - 🛡️ **コンテンツフィルタリング**: ビルトインの安全性フィルター
 - 📁 **画像管理**: 生成済み画像の整理と一覧表示
 - 🔧 **デバッグモード**: トラブルシューティング用の詳細ログ
+
+### GPT-Image-1.5 サポート (v1.2.0+)
+- 🚀 **gpt-image-1.5 モデル**: 4倍高速な生成、20%低コスト
+- 📝 **テキストレンダリング向上**: 画像内テキストの精度向上
+- 👤 **入力忠実度**: 顔やロゴの高忠実度保持（編集・変換時）
+- 🔧 **モデル選択**: gpt-image-1 と gpt-image-1.5 から選択可能
 
 ### バッチ処理機能 (v1.1.0+)
 - 📦 **CLIバッチツール**: コマンドラインから複数画像を一括生成
