@@ -56,7 +56,7 @@ const openai = new OpenAI({
 const server = new Server(
   {
     name: 'openai-gpt-image-mcp-server',
-    version: '1.2.3',
+    version: '1.2.4',
   },
   {
     capabilities: {

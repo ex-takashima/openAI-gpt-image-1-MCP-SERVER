@@ -12,6 +12,7 @@
  *   --timeout <ms>          Timeout in milliseconds (default: 600000)
  *   --max-concurrent <n>    Max concurrent jobs (default: 2)
  *   --estimate-only         Estimate cost without executing
+ *   --allow-any-path        Allow output to any path (bypass security for CI/CD)
  *   --help, -h              Show help message
  *   --version, -v           Show version
  */
@@ -91,6 +92,11 @@ function parseArgs(): {
         options.estimateOnly = true;
         break;
 
+      case '--allow-any-path':
+        // Enable any output path (bypass security restrictions for CI/CD)
+        process.env.OPENAI_IMAGE_ALLOW_ANY_PATH = 'true';
+        break;
+
       default:
         if (arg.startsWith('--')) {
           console.error(`Error: Unknown option: ${arg}`);
@@ -124,6 +130,7 @@ Options:
   --timeout <ms>           Timeout in milliseconds (default: 600000)
   --max-concurrent <n>     Max concurrent jobs (default: 2)
   --estimate-only          Estimate cost without executing
+  --allow-any-path         Allow output to any path (bypass security for CI/CD)
   --help, -h               Show this help message
   --version, -v            Show version
 

@@ -183,17 +183,24 @@ export async function normalizeAndValidatePath(outputPath: string): Promise<stri
   }
 
   // Security check: Ensure path is within base directory (prevent path traversal)
+  // Can be disabled with OPENAI_IMAGE_ALLOW_ANY_PATH=true for CI/CD environments
   const normalizedPath = path.resolve(absolutePath);
   const normalizedBase = path.resolve(defaultDir);
+  const allowAnyPath = process.env.OPENAI_IMAGE_ALLOW_ANY_PATH === 'true';
 
-  if (!normalizedPath.startsWith(normalizedBase + path.sep) && normalizedPath !== normalizedBase) {
+  if (!allowAnyPath && !normalizedPath.startsWith(normalizedBase + path.sep) && normalizedPath !== normalizedBase) {
     const errorMsg =
       `Security error: Access denied. All paths must be within the configured output directory.\n` +
       `Base directory: ${normalizedBase}\n` +
       `Attempted path: ${normalizedPath}\n` +
-      `Use OPENAI_IMAGE_OUTPUT_DIR environment variable to change the base directory.`;
+      `Use OPENAI_IMAGE_OUTPUT_DIR environment variable to change the base directory.\n` +
+      `Or set OPENAI_IMAGE_ALLOW_ANY_PATH=true for CI/CD environments (use with caution).`;
     debugLog(errorMsg);
     throw new Error(errorMsg);
+  }
+
+  if (allowAnyPath) {
+    debugLog(`Path security check bypassed (OPENAI_IMAGE_ALLOW_ANY_PATH=true): ${normalizedPath}`);
   }
 
   debugLog(`Path validated successfully: ${normalizedPath}`);

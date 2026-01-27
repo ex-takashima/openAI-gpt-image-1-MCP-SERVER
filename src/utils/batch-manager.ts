@@ -2,10 +2,12 @@
  * Batch Manager - Manages batch image generation operations
  */
 
+import { resolve, isAbsolute } from 'path';
 import OpenAI from 'openai';
 import { JobManager, getJobManager } from './jobs.js';
 import { debugLog } from './cost.js';
 import { getDatabase } from './database.js';
+import { getDefaultOutputDirectory } from './path.js';
 import type {
   BatchConfig,
   BatchJobConfig,
@@ -75,11 +77,19 @@ export class BatchManager {
       timeout: config.timeout || 600000,
     });
 
-    // Prepare jobs with defaults
-    const jobs = config.jobs.map((job, index) => ({
-      ...job,
-      output_path: job.output_path || `batch_${index + 1}.png`,
-    }));
+    // Determine output directory
+    const outputDir = config.output_dir || getDefaultOutputDirectory();
+
+    // Prepare jobs with defaults and resolve output paths
+    const jobs = config.jobs.map((job, index) => {
+      const filename = job.output_path || `batch_${index + 1}.png`;
+      // If output_path is not absolute, prepend output_dir
+      const resolvedPath = isAbsolute(filename) ? filename : resolve(outputDir, filename);
+      return {
+        ...job,
+        output_path: resolvedPath,
+      };
+    });
 
     // Create semaphore for concurrency control
     const maxConcurrent = config.max_concurrent || 2;

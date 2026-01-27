@@ -67,6 +67,7 @@ openai-gpt-image-batch <batch-config.json> [OPTIONS]
 | `--timeout <ms>` | タイムアウト（ミリ秒） | `600000`（10分） |
 | `--max-concurrent <n>` | 最大同時実行数 | `2` |
 | `--estimate-only` | コスト見積もりのみ実行 | - |
+| `--allow-any-path` | パス制限を緩和（CI/CD用） | - |
 | `--help`, `-h` | ヘルプメッセージを表示 | - |
 | `--version`, `-v` | バージョン情報を表示 | - |
 

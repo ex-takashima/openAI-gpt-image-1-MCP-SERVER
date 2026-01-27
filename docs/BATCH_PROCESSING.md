@@ -67,6 +67,7 @@ openai-gpt-image-batch <batch-config.json> [OPTIONS]
 | `--timeout <ms>` | Timeout in milliseconds | `600000` (10 minutes) |
 | `--max-concurrent <n>` | Max concurrent jobs | `2` |
 | `--estimate-only` | Estimate cost without executing | - |
+| `--allow-any-path` | Bypass path security restrictions (for CI/CD) | - |
 | `--help`, `-h` | Show help message | - |
 | `--version`, `-v` | Show version | - |
 
