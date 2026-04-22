@@ -71,7 +71,7 @@ const TOOLS = [
     name: 'generate_image',
     description:
       'Generate a new image from a text prompt using OpenAI GPT image models. ' +
-      'Supports gpt-image-1 and gpt-image-1.5 (faster, cheaper, better text rendering). ' +
+      'Supports gpt-image-1, gpt-image-1.5 (4x faster/cheaper, better text), and gpt-image-2 (flexible sizes up to 4K). ' +
       'Automatically calculates and reports token usage and cost.',
     inputSchema: {
       type: 'object',
@@ -86,13 +86,13 @@ const TOOLS = [
         },
         model: {
           type: 'string',
-          enum: ['gpt-image-1', 'gpt-image-1.5'],
-          description: 'Model to use. gpt-image-1.5 is 4x faster, 20% cheaper, with better text rendering (default: gpt-image-1)',
+          enum: ['gpt-image-1', 'gpt-image-1.5', 'gpt-image-2'],
+          description: 'Model to use. gpt-image-2: latest, flexible sizes up to 4K (3840/2160 experimental), no transparent_background. gpt-image-1.5: 4x faster, 20% cheaper, supports input_fidelity. gpt-image-1: original. (default: gpt-image-1)',
         },
         size: {
           type: 'string',
-          enum: ['1024x1024', '1024x1536', '1536x1024', 'auto'],
-          description: 'Image size (default: auto)',
+          enum: ['1024x1024', '1024x1536', '1536x1024', '2048x2048', '2048x1152', '1152x2048', '3840x2160', '2160x3840', 'auto'],
+          description: 'Image size. gpt-image-1/1.5 only support 1024x1024, 1024x1536, 1536x1024, auto. gpt-image-2 also supports 2K/4K presets plus custom WxH (16px multiples, each edge ≤3840, ratio ≤3:1). 3840x2160/2160x3840 are experimental. (default: auto)',
         },
         quality: {
           type: 'string',
@@ -106,7 +106,7 @@ const TOOLS = [
         },
         transparent_background: {
           type: 'boolean',
-          description: 'Enable transparent background (PNG only, default: false)',
+          description: 'Enable transparent background (PNG only, default: false). Not supported by gpt-image-2.',
         },
         moderation: {
           type: 'string',
@@ -166,13 +166,13 @@ const TOOLS = [
         },
         model: {
           type: 'string',
-          enum: ['gpt-image-1', 'gpt-image-1.5'],
-          description: 'Model to use. gpt-image-1.5 supports input_fidelity for better preservation (default: gpt-image-1)',
+          enum: ['gpt-image-1', 'gpt-image-1.5', 'gpt-image-2'],
+          description: 'Model to use. gpt-image-2: latest, flexible sizes, input_fidelity is auto-high (field ignored). gpt-image-1.5: supports input_fidelity. gpt-image-1: original. (default: gpt-image-1)',
         },
         size: {
           type: 'string',
-          enum: ['1024x1024', '1024x1536', '1536x1024', 'auto'],
-          description: 'Image size (default: auto)',
+          enum: ['1024x1024', '1024x1536', '1536x1024', '2048x2048', '2048x1152', '1152x2048', '3840x2160', '2160x3840', 'auto'],
+          description: 'Image size. gpt-image-1/1.5 only support 1024x1024, 1024x1536, 1536x1024, auto. gpt-image-2 also supports 2K/4K presets plus custom WxH (16px multiples, each edge ≤3840, ratio ≤3:1). (default: auto)',
         },
         quality: {
           type: 'string',
@@ -206,7 +206,7 @@ const TOOLS = [
         input_fidelity: {
           type: 'string',
           enum: ['low', 'high'],
-          description: 'Input fidelity for preserving faces/logos. Only works with gpt-image-1.5. High uses more tokens but better preserves details (default: low)',
+          description: 'Input fidelity for preserving faces/logos. gpt-image-1.5 only (gpt-image-2 is always high, gpt-image-1 unsupported). High uses more tokens. (default: low)',
         },
       },
       required: ['prompt'],
@@ -239,13 +239,13 @@ const TOOLS = [
         },
         model: {
           type: 'string',
-          enum: ['gpt-image-1', 'gpt-image-1.5'],
-          description: 'Model to use. gpt-image-1.5 supports input_fidelity for better preservation (default: gpt-image-1)',
+          enum: ['gpt-image-1', 'gpt-image-1.5', 'gpt-image-2'],
+          description: 'Model to use. gpt-image-2: latest, flexible sizes, input_fidelity is auto-high (field ignored). gpt-image-1.5: supports input_fidelity. gpt-image-1: original. (default: gpt-image-1)',
         },
         size: {
           type: 'string',
-          enum: ['1024x1024', '1024x1536', '1536x1024', 'auto'],
-          description: 'Image size (default: auto)',
+          enum: ['1024x1024', '1024x1536', '1536x1024', '2048x2048', '2048x1152', '1152x2048', '3840x2160', '2160x3840', 'auto'],
+          description: 'Image size. gpt-image-1/1.5 only support 1024x1024, 1024x1536, 1536x1024, auto. gpt-image-2 also supports 2K/4K presets plus custom WxH (16px multiples, each edge ≤3840, ratio ≤3:1). (default: auto)',
         },
         quality: {
           type: 'string',
@@ -279,7 +279,7 @@ const TOOLS = [
         input_fidelity: {
           type: 'string',
           enum: ['low', 'high'],
-          description: 'Input fidelity for preserving faces/logos. Only works with gpt-image-1.5. High uses more tokens but better preserves details (default: low)',
+          description: 'Input fidelity for preserving faces/logos. gpt-image-1.5 only (gpt-image-2 is always high, gpt-image-1 unsupported). High uses more tokens. (default: low)',
         },
       },
       required: ['prompt'],
@@ -388,13 +388,13 @@ const TOOLS = [
         },
         model: {
           type: 'string',
-          enum: ['gpt-image-1', 'gpt-image-1.5'],
+          enum: ['gpt-image-1', 'gpt-image-1.5', 'gpt-image-2'],
           description: 'Model to use (default: gpt-image-1)',
         },
         size: {
           type: 'string',
-          enum: ['1024x1024', '1024x1536', '1536x1024', 'auto'],
-          description: 'Image size',
+          enum: ['1024x1024', '1024x1536', '1536x1024', '2048x2048', '2048x1152', '1152x2048', '3840x2160', '2160x3840', 'auto'],
+          description: 'Image size. gpt-image-2 also supports custom WxH (16px multiples, each edge ≤3840, ratio ≤3:1).',
         },
         quality: {
           type: 'string',
@@ -415,7 +415,7 @@ const TOOLS = [
         input_fidelity: {
           type: 'string',
           enum: ['low', 'high'],
-          description: 'Input fidelity for edit/transform (gpt-image-1.5 only)',
+          description: 'Input fidelity for edit/transform. gpt-image-1.5 only; gpt-image-2 is always high (field ignored).',
         },
       },
       required: ['tool_name', 'prompt'],

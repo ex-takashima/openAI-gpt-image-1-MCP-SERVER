@@ -5,6 +5,8 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { debugLog } from './cost.js';
+import { MODEL_CAPABILITIES } from '../types/models.js';
+import type { ImageModel, ImageSizePreset } from '../types/tools.js';
 
 /**
  * Read image file and convert to base64
@@ -75,11 +77,42 @@ export function validateImageFormat(format: string): boolean {
 }
 
 /**
- * Validate image size
+ * Validate image size against the active model's capabilities.
+ *
+ * gpt-image-1 / 1.5: only the 3 hardcoded presets are valid.
+ * gpt-image-2: presets + any custom WxH that satisfies edgeStep / maxEdge / ratio / pixel bounds.
  */
-export function validateImageSize(size: string): boolean {
-  const validSizes = ['1024x1024', '1024x1536', '1536x1024'];
-  return validSizes.includes(size);
+export function validateImageSize(size: string, model: ImageModel = 'gpt-image-1'): boolean {
+  if (size === 'auto') return true;
+
+  const caps = MODEL_CAPABILITIES[model];
+  if (caps.supportedSizePresets.includes(size as ImageSizePreset)) return true;
+
+  if (!caps.sizeConstraints) return false;
+
+  const match = /^(\d+)x(\d+)$/.exec(size);
+  if (!match) return false;
+
+  const w = parseInt(match[1], 10);
+  const h = parseInt(match[2], 10);
+  const c = caps.sizeConstraints;
+
+  if (w % c.edgeStep !== 0 || h % c.edgeStep !== 0) return false;
+  if (w > c.maxEdge || h > c.maxEdge) return false;
+  if (Math.max(w, h) / Math.min(w, h) > c.ratioMax) return false;
+
+  const px = w * h;
+  if (px < c.pxMin || px > c.pxMax) return false;
+
+  return true;
+}
+
+/**
+ * Check whether a size is flagged as experimental for the given model.
+ */
+export function isExperimentalSize(size: string, model: ImageModel): boolean {
+  const caps = MODEL_CAPABILITIES[model];
+  return caps.experimentalSizes?.includes(size) ?? false;
 }
 
 /**

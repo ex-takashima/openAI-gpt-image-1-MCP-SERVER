@@ -4,8 +4,9 @@
 
 import OpenAI from 'openai';
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
-import { saveBase64Image, validateImageFormat, validateImageSize, validateQuality } from '../utils/image.js';
+import { saveBase64Image, validateImageFormat, validateImageSize, validateQuality, isExperimentalSize } from '../utils/image.js';
 import { calculateCost, formatCostBreakdown, debugLog } from '../utils/cost.js';
+import { MODEL_CAPABILITIES } from '../types/models.js';
 import { normalizeAndValidatePath, getDisplayPath, generateUniqueFilePath } from '../utils/path.js';
 import { getDatabase } from '../utils/database.js';
 import { saveImageWithMetadata, generateImageUUID, calculateParamsHash, buildMetadataObject } from '../utils/metadata.js';
@@ -53,11 +54,28 @@ export async function generateImage(
     );
   }
 
-  if (size !== 'auto' && !validateImageSize(size)) {
+  // gpt-image-2 does not support transparent backgrounds — fail fast so the user picks another model.
+  if (transparent_background && !MODEL_CAPABILITIES[model].supportsTransparentBg) {
     throw new McpError(
       ErrorCode.InvalidParams,
-      `Invalid size: ${size}. Must be one of: 1024x1024, 1024x1536, 1536x1024, auto`
+      `transparent_background is not supported by ${model}. Use gpt-image-1 or gpt-image-1.5.`
     );
+  }
+
+  if (size !== 'auto' && !validateImageSize(size, model)) {
+    const presets = MODEL_CAPABILITIES[model].supportedSizePresets.join(', ');
+    const extra =
+      model === 'gpt-image-2'
+        ? ' Custom sizes allowed: WxH in 16px multiples, each edge ≤3840, ratio ≤3:1, 655360 ≤ pixels ≤ 8294400.'
+        : '';
+    throw new McpError(
+      ErrorCode.InvalidParams,
+      `Invalid size for ${model}: ${size}. Allowed presets: ${presets}.${extra}`
+    );
+  }
+
+  if (size !== 'auto' && isExperimentalSize(size, model)) {
+    debugLog(`[WARN] Size ${size} is experimental for ${model}; quality/stability are not guaranteed.`);
   }
 
   if (quality !== 'auto' && !validateQuality(quality)) {

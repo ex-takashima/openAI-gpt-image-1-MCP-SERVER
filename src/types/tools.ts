@@ -5,17 +5,30 @@
 /**
  * Common image generation parameters
  */
-export type ImageSize = '1024x1024' | '1024x1536' | '1536x1024' | 'auto';
+export type ImageSizePreset =
+  | '1024x1024'
+  | '1024x1536'
+  | '1536x1024'
+  | '2048x2048'
+  | '2048x1152'
+  | '1152x2048'
+  | '3840x2160'
+  | '2160x3840'
+  | 'auto';
+
+// Preserve preset autocomplete while allowing arbitrary WxH strings (for gpt-image-2 custom sizes).
+export type ImageSize = ImageSizePreset | (string & {});
 export type ImageQuality = 'low' | 'medium' | 'high' | 'auto';
 export type ImageFormat = 'png' | 'jpeg' | 'webp';
 export type ModerationLevel = 'auto' | 'low';
 
 /**
  * Supported image generation models
- * - gpt-image-1: Original model (default)
- * - gpt-image-1.5: Latest model with 4x faster speed, 20% cheaper, improved text rendering
+ * - gpt-image-1: Original model
+ * - gpt-image-1.5: 4x faster, 20% cheaper, improved text rendering, supports input_fidelity
+ * - gpt-image-2: Latest, flexible sizes up to 4K (experimental), no transparent bg / input_fidelity
  */
-export type ImageModel = 'gpt-image-1' | 'gpt-image-1.5';
+export type ImageModel = 'gpt-image-1' | 'gpt-image-1.5' | 'gpt-image-2';
 
 /**
  * Input fidelity level for image editing (gpt-image-1.5 only)

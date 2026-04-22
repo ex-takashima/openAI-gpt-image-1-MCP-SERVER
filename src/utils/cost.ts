@@ -63,6 +63,61 @@ const IMAGE_COST_GPT_IMAGE_1_5: Record<string, Record<string, number>> = {
   },
 };
 
+// Image generation costs for gpt-image-2 (USD per image, 2026-04 OpenAI pricing)
+// 3840x2160 / 2160x3840 are experimental and use approximate pricing.
+const IMAGE_COST_GPT_IMAGE_2: Record<string, Record<string, number>> = {
+  low: {
+    '1024x1024': 0.006,
+    '1024x1536': 0.005,
+    '1536x1024': 0.005,
+    '2048x2048': 0.012,
+    '2048x1152': 0.009,
+    '1152x2048': 0.009,
+    '3840x2160': 0.02,
+    '2160x3840': 0.02,
+  },
+  medium: {
+    '1024x1024': 0.053,
+    '1024x1536': 0.041,
+    '1536x1024': 0.041,
+    '2048x2048': 0.11,
+    '2048x1152': 0.075,
+    '1152x2048': 0.075,
+    '3840x2160': 0.15,
+    '2160x3840': 0.15,
+  },
+  high: {
+    '1024x1024': 0.211,
+    '1024x1536': 0.165,
+    '1536x1024': 0.165,
+    '2048x2048': 0.42,
+    '2048x1152': 0.30,
+    '1152x2048': 0.30,
+    '3840x2160': 0.41,
+    '2160x3840': 0.41,
+  },
+};
+
+/**
+ * Estimate cost for an arbitrary (custom) size by pixel-scaling from the
+ * 1024x1024 reference cost. Used when an exact entry is missing from the
+ * pricing table — notably for gpt-image-2 custom sizes.
+ */
+function estimateCostByPixels(
+  pricingTable: Record<string, Record<string, number>>,
+  quality: string,
+  size: string
+): number | undefined {
+  const match = /^(\d+)x(\d+)$/.exec(size);
+  if (!match) return undefined;
+  const w = parseInt(match[1], 10);
+  const h = parseInt(match[2], 10);
+  const referenceCost = pricingTable[quality]?.['1024x1024'];
+  if (!referenceCost) return undefined;
+  const referencePx = 1024 * 1024;
+  return referenceCost * ((w * h) / referencePx);
+}
+
 /**
  * Calculate the estimated cost for image generation
  */
@@ -80,11 +135,18 @@ export function calculateCost(
   const model = params.model || 'gpt-image-1';
 
   // Select pricing table based on model
-  const pricingTable = model === 'gpt-image-1.5'
-    ? IMAGE_COST_GPT_IMAGE_1_5
-    : IMAGE_COST_GPT_IMAGE_1;
+  const pricingTable =
+    model === 'gpt-image-2'
+      ? IMAGE_COST_GPT_IMAGE_2
+      : model === 'gpt-image-1.5'
+        ? IMAGE_COST_GPT_IMAGE_1_5
+        : IMAGE_COST_GPT_IMAGE_1;
 
-  const imageGenerationCost = pricingTable[quality]?.[size] || 0.05;
+  const imageGenerationCost =
+    pricingTable[quality]?.[size] ??
+    estimateCostByPixels(pricingTable, quality, size) ??
+    pricingTable[quality]?.['1024x1024'] ??
+    0.05;
 
   return {
     inputTokens,

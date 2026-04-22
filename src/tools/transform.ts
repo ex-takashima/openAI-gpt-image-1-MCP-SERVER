@@ -6,8 +6,9 @@ import OpenAI, { toFile } from 'openai';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
-import { imageFileToBase64, saveBase64Image, validateImageFormat, validateImageSize, validateQuality } from '../utils/image.js';
+import { imageFileToBase64, saveBase64Image, validateImageFormat, validateImageSize, validateQuality, isExperimentalSize } from '../utils/image.js';
 import { calculateCost, formatCostBreakdown, debugLog } from '../utils/cost.js';
+import { MODEL_CAPABILITIES } from '../types/models.js';
 import { getMimeTypeFromPath } from '../utils/mime.js';
 import { normalizeAndValidatePath, getDisplayPath, normalizeInputPath, generateUniqueFilePath } from '../utils/path.js';
 import { getDatabase } from '../utils/database.js';
@@ -58,11 +59,20 @@ export async function transformImage(
     );
   }
 
-  if (size !== 'auto' && !validateImageSize(size)) {
+  if (size !== 'auto' && !validateImageSize(size, model)) {
+    const presets = MODEL_CAPABILITIES[model].supportedSizePresets.join(', ');
+    const extra =
+      model === 'gpt-image-2'
+        ? ' Custom sizes allowed: WxH in 16px multiples, each edge ≤3840, ratio ≤3:1, 655360 ≤ pixels ≤ 8294400.'
+        : '';
     throw new McpError(
       ErrorCode.InvalidParams,
-      `Invalid size: ${size}. Must be one of: 1024x1024, 1024x1536, 1536x1024, auto`
+      `Invalid size for ${model}: ${size}. Allowed presets: ${presets}.${extra}`
     );
+  }
+
+  if (size !== 'auto' && isExperimentalSize(size, model)) {
+    debugLog(`[WARN] Size ${size} is experimental for ${model}; quality/stability are not guaranteed.`);
   }
 
   if (quality !== 'auto' && !validateQuality(quality)) {
@@ -153,9 +163,13 @@ export async function transformImage(
       requestParams.moderation = moderation;
     }
 
-    // input_fidelity is only supported for gpt-image-1.5
-    if (input_fidelity && model === 'gpt-image-1.5') {
-      requestParams.input_fidelity = input_fidelity;
+    // See edit.ts for rationale: gpt-image-2 rejects the field, gpt-image-1 silently ignores.
+    if (input_fidelity) {
+      if (MODEL_CAPABILITIES[model].supportsInputFidelity) {
+        requestParams.input_fidelity = input_fidelity;
+      } else {
+        debugLog(`[WARN] input_fidelity=${input_fidelity} ignored for ${model} (unsupported or auto-high)`);
+      }
     }
 
     debugLog('Request params:', JSON.stringify({ ...requestParams, image: '[REDACTED]' }, null, 2));
