@@ -5,6 +5,27 @@ All notable changes to the OpenAI GPT-Image-1 MCP Server will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-04-22
+
+### Added
+- **`edit` and `transform` operations in the batch CLI** (`openai-gpt-image-batch`)
+  - New `operation` field on each batch job: `"generate"` (default), `"edit"`, or `"transform"`
+  - New job fields `reference_image_path` (required for `edit`/`transform`) and `mask_image_path` (optional, `edit` only)
+  - New job fields `model` and `input_fidelity` routed through to the underlying tool
+  - `src/utils/batch-manager.ts` — dispatches to `generate_image` / `edit_image` / `transform_image` via `JobManager` based on `operation`, and resolves `reference_image_path` / `mask_image_path` against the process working directory (matching existing `output_dir` semantics)
+  - `src/utils/batch-config.ts` — validator enforces: `reference_image_path` required for `edit`/`transform`, `mask_image_path` only valid for `edit`, and enum checks for `operation` / `model` / `input_fidelity`
+  - Example configs: `examples/batch-edit.json`, `examples/batch-transform.json`
+- Documentation updates in `docs/BATCH_PROCESSING.md` / `.ja.md` and `docs/CLI_REFERENCE.md` / `.ja.md` covering the new fields, JSON schema, CLI usage examples, and relative-path resolution rules
+
+### Changed
+- CLI `--help` header reworded from "Batch Generation Tool" to "Batch Tool (generate / edit / transform)" with a short description of the new fields
+- CLI `--version` output (`openai-gpt-image-batch`) now reports the package version (previously hard-coded to `1.1.0` and out of sync)
+
+### Notes
+- No breaking changes. Existing generate-only configs continue to work without modification (the `operation` field defaults to `"generate"`).
+- `--estimate-only` does **not** yet account for the additional input tokens consumed by reference images in `edit`/`transform`. Treat those estimates as a lower bound.
+- Base64 image inputs are intentionally not supported in the CLI (use the MCP server for that workflow).
+
 ## [1.3.0] - 2026-04-22
 
 ### Added

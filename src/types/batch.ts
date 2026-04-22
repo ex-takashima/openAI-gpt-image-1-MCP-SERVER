@@ -3,11 +3,27 @@
  */
 
 /**
+ * Operation type for a batch job
+ * - generate: text-to-image (default)
+ * - edit: inpainting with a reference image and optional mask
+ * - transform: image-to-image transformation from a reference image
+ */
+export type BatchOperation = 'generate' | 'edit' | 'transform';
+
+/**
  * Single job configuration in batch
  */
 export interface BatchJobConfig {
+  /** Operation type. Defaults to 'generate' when omitted. */
+  operation?: BatchOperation;
   prompt: string;
   output_path?: string;
+
+  /** Reference image path (required for 'edit' and 'transform'). Resolved against process cwd when relative. */
+  reference_image_path?: string;
+  /** Mask image path (used only by 'edit'). Resolved against process cwd when relative. */
+  mask_image_path?: string;
+
   size?: '1024x1024' | '1024x1536' | '1536x1024' | 'auto';
   quality?: 'low' | 'medium' | 'high' | 'auto';
   output_format?: 'png' | 'jpeg' | 'webp';
@@ -15,6 +31,11 @@ export interface BatchJobConfig {
   moderation?: 'auto' | 'low' | 'medium' | 'high';
   sample_count?: number;
   return_base64?: boolean;
+
+  /** Model to use. Applies mainly to 'edit'/'transform' (generate also accepts it). */
+  model?: 'gpt-image-1' | 'gpt-image-1.5' | 'gpt-image-2';
+  /** Input fidelity for preserving faces/logos (gpt-image-1.5 only). */
+  input_fidelity?: 'low' | 'high';
 }
 
 /**

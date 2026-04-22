@@ -163,14 +163,19 @@ Array of image generation jobs. Each job has the following fields:
 
 | Field | Type | Required | Description | Default |
 |-------|------|----------|-------------|---------|
-| `prompt` | string | ✅ | Image generation prompt | - |
+| `operation` | string | ❌ | Job type: `generate`, `edit`, `transform` | `generate` |
+| `prompt` | string | ✅ | Image generation/edit/transform prompt | - |
 | `output_path` | string | ❌ | Output file path (filename only) | Auto-generated |
+| `reference_image_path` | string | ⚠️ | Reference image path. Required for `edit` and `transform`. Resolved against the process working directory when relative. | - |
+| `mask_image_path` | string | ❌ | Mask image path. Only valid for `edit`. Resolved against the process working directory when relative. | - |
 | `size` | string | ❌ | Image size: `1024x1024`, `1024x1536`, `1536x1024`, `auto` | `auto` |
 | `quality` | string | ❌ | Quality level: `low`, `medium`, `high`, `auto` | `auto` |
 | `output_format` | string | ❌ | Output format: `png`, `jpeg`, `webp` | `png` |
-| `transparent_background` | boolean | ❌ | Enable transparent background (PNG only) | `false` |
+| `transparent_background` | boolean | ❌ | Enable transparent background (PNG only, `generate` only) | `false` |
 | `moderation` | string | ❌ | Content filtering: `auto`, `low`, `medium`, `high` | `auto` |
 | `sample_count` | number | ❌ | Number of images to generate (1-10) | 1 |
+| `model` | string | ❌ | Model override: `gpt-image-1`, `gpt-image-1.5`, `gpt-image-2` | tool default |
+| `input_fidelity` | string | ❌ | `low` or `high`. Preserves faces/logos for `edit`/`transform` (gpt-image-1.5 only) | tool default |
 
 #### `output_dir` (Optional)
 
@@ -262,6 +267,62 @@ Retry configuration for failed jobs.
   }
 }
 ```
+
+#### 4. Image Editing (Inpainting)
+
+Set `operation` to `edit` and provide `reference_image_path`. A `mask_image_path` is optional; when supplied, only the masked (transparent) regions are regenerated.
+
+```json
+{
+  "jobs": [
+    {
+      "operation": "edit",
+      "prompt": "Replace the sky with a vivid aurora over snow-capped mountains",
+      "reference_image_path": "./inputs/landscape.png",
+      "mask_image_path": "./inputs/landscape-sky-mask.png",
+      "output_path": "landscape-aurora.png",
+      "size": "1536x1024",
+      "quality": "high"
+    },
+    {
+      "operation": "edit",
+      "prompt": "Add a red knit beanie to the person",
+      "reference_image_path": "./inputs/portrait.png",
+      "output_path": "portrait-with-beanie.png",
+      "model": "gpt-image-1.5",
+      "input_fidelity": "high"
+    }
+  ],
+  "output_dir": "./edited-images"
+}
+```
+
+See [`examples/batch-edit.json`](../examples/batch-edit.json) for the same example as a standalone file.
+
+#### 5. Image Transformation (Image-to-Image)
+
+Set `operation` to `transform` and provide `reference_image_path`. No mask is used — the entire image is regenerated in the new style.
+
+```json
+{
+  "jobs": [
+    {
+      "operation": "transform",
+      "prompt": "Convert this photo into a watercolor painting with soft pastel tones",
+      "reference_image_path": "./inputs/city.jpg",
+      "output_path": "city-watercolor.png",
+      "quality": "high"
+    }
+  ],
+  "output_dir": "./transformed-images"
+}
+```
+
+See [`examples/batch-transform.json`](../examples/batch-transform.json) for more.
+
+> **Relative path resolution:** `reference_image_path` and `mask_image_path` are resolved relative to the **process working directory** (the directory you run the CLI from), matching the existing behavior of `output_dir`. Use absolute paths if you want to run the command from anywhere.
+
+> **Cost note:** `edit` and `transform` jobs consume additional input tokens for the reference image, which `--estimate-only` does **not** currently account for. Treat estimates for these operations as a lower bound.
 
 ---
 

@@ -104,7 +104,15 @@ openai-gpt-image-batch batch-config.json --max-concurrent 5 --timeout 1200000
 
 # CI/CD: Output to any directory (bypass security)
 openai-gpt-image-batch batch-config.json --output-dir ./artifacts --allow-any-path
+
+# Batch edit (inpainting) — each job sets "operation": "edit" and "reference_image_path"
+openai-gpt-image-batch examples/batch-edit.json
+
+# Batch transform (image-to-image) — each job sets "operation": "transform" and "reference_image_path"
+openai-gpt-image-batch examples/batch-transform.json
 ```
+
+> Relative `reference_image_path` / `mask_image_path` values are resolved against the process working directory (matching `output_dir`), so run the CLI from the directory that contains the input images, or use absolute paths.
 
 ### Batch Configuration JSON Schema
 
@@ -122,16 +130,31 @@ openai-gpt-image-batch batch-config.json --output-dir ./artifacts --allow-any-pa
         "type": "object",
         "required": ["prompt"],
         "properties": {
+          "operation": { "enum": ["generate", "edit", "transform"] },
           "prompt": { "type": "string", "minLength": 1 },
           "output_path": { "type": "string" },
+          "reference_image_path": { "type": "string" },
+          "mask_image_path": { "type": "string" },
           "size": { "enum": ["1024x1024", "1024x1536", "1536x1024", "auto"] },
           "quality": { "enum": ["low", "medium", "high", "auto"] },
           "output_format": { "enum": ["png", "jpeg", "webp"] },
           "transparent_background": { "type": "boolean" },
           "moderation": { "enum": ["auto", "low", "medium", "high"] },
           "sample_count": { "type": "integer", "minimum": 1, "maximum": 10 },
-          "return_base64": { "type": "boolean" }
-        }
+          "return_base64": { "type": "boolean" },
+          "model": { "enum": ["gpt-image-1", "gpt-image-1.5", "gpt-image-2"] },
+          "input_fidelity": { "enum": ["low", "high"] }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "operation": { "enum": ["edit", "transform"] } }, "required": ["operation"] },
+            "then": { "required": ["reference_image_path"] }
+          },
+          {
+            "if": { "not": { "properties": { "operation": { "const": "edit" } }, "required": ["operation"] } },
+            "then": { "not": { "required": ["mask_image_path"] } }
+          }
+        ]
       }
     },
     "output_dir": { "type": "string" },

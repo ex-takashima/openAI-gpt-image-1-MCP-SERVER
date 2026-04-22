@@ -1,0 +1,24 @@
+{
+  "jobs": [
+    {
+      "operation": "edit",
+      "prompt": "Replace the sky with a vivid aurora over snow-capped mountains",
+      "reference_image_path": "./inputs/landscape.png",
+      "mask_image_path": "./inputs/landscape-sky-mask.png",
+      "output_path": "landscape-aurora.png",
+      "size": "1536x1024",
+      "quality": "high"
+    },
+    {
+      "operation": "edit",
+      "prompt": "Add a red knit beanie to the person",
+      "reference_image_path": "./inputs/portrait.png",
+      "output_path": "portrait-with-beanie.png",
+      "model": "gpt-image-1.5",
+      "input_fidelity": "high",
+      "quality": "high"
+    }
+  ],
+  "output_dir": "./edited-images",
+  "max_concurrent": 2
+}

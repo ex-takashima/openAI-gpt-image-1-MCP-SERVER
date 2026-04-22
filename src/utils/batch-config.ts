@@ -23,6 +23,15 @@ function validateJobConfig(job: any, index: number): void {
     throw new BatchConfigError(`Job at index ${index} is not a valid object`);
   }
 
+  // Optional: operation (default: 'generate')
+  const validOperations = ['generate', 'edit', 'transform'];
+  if (job.operation !== undefined && !validOperations.includes(job.operation)) {
+    throw new BatchConfigError(
+      `Job at index ${index}: operation must be one of: ${validOperations.join(', ')}`
+    );
+  }
+  const operation: string = job.operation || 'generate';
+
   // Required: prompt
   if (!job.prompt || typeof job.prompt !== 'string' || job.prompt.trim().length === 0) {
     throw new BatchConfigError(`Job at index ${index}: prompt is required and must be a non-empty string`);
@@ -31,6 +40,54 @@ function validateJobConfig(job: any, index: number): void {
   // Optional: output_path
   if (job.output_path !== undefined && typeof job.output_path !== 'string') {
     throw new BatchConfigError(`Job at index ${index}: output_path must be a string`);
+  }
+
+  // reference_image_path: required for edit/transform, optional but valid-if-present for generate
+  if (operation === 'edit' || operation === 'transform') {
+    if (!job.reference_image_path || typeof job.reference_image_path !== 'string' || job.reference_image_path.trim().length === 0) {
+      throw new BatchConfigError(
+        `Job at index ${index}: reference_image_path is required for operation "${operation}"`
+      );
+    }
+  } else if (job.reference_image_path !== undefined) {
+    if (typeof job.reference_image_path !== 'string') {
+      throw new BatchConfigError(`Job at index ${index}: reference_image_path must be a string`);
+    }
+    throw new BatchConfigError(
+      `Job at index ${index}: reference_image_path is only valid for operation "edit" or "transform"`
+    );
+  }
+
+  // mask_image_path: only valid for edit
+  if (job.mask_image_path !== undefined) {
+    if (typeof job.mask_image_path !== 'string') {
+      throw new BatchConfigError(`Job at index ${index}: mask_image_path must be a string`);
+    }
+    if (operation !== 'edit') {
+      throw new BatchConfigError(
+        `Job at index ${index}: mask_image_path is only valid for operation "edit"`
+      );
+    }
+  }
+
+  // Optional: model
+  if (job.model !== undefined) {
+    const validModels = ['gpt-image-1', 'gpt-image-1.5', 'gpt-image-2'];
+    if (!validModels.includes(job.model)) {
+      throw new BatchConfigError(
+        `Job at index ${index}: model must be one of: ${validModels.join(', ')}`
+      );
+    }
+  }
+
+  // Optional: input_fidelity
+  if (job.input_fidelity !== undefined) {
+    const validFidelities = ['low', 'high'];
+    if (!validFidelities.includes(job.input_fidelity)) {
+      throw new BatchConfigError(
+        `Job at index ${index}: input_fidelity must be one of: ${validFidelities.join(', ')}`
+      );
+    }
   }
 
   // Optional: size

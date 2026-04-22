@@ -1,0 +1,22 @@
+{
+  "jobs": [
+    {
+      "operation": "transform",
+      "prompt": "Convert this photo into a watercolor painting with soft pastel tones",
+      "reference_image_path": "./inputs/city.jpg",
+      "output_path": "city-watercolor.png",
+      "quality": "high"
+    },
+    {
+      "operation": "transform",
+      "prompt": "Stylize as a 1980s retro poster with bold neon outlines",
+      "reference_image_path": "./inputs/portrait.png",
+      "output_path": "portrait-retro.png",
+      "model": "gpt-image-1.5",
+      "input_fidelity": "high",
+      "sample_count": 2
+    }
+  ],
+  "output_dir": "./transformed-images",
+  "max_concurrent": 2
+}

@@ -104,7 +104,15 @@ openai-gpt-image-batch batch-config.json --max-concurrent 5 --timeout 1200000
 
 # CI/CD: 任意のディレクトリに出力（セキュリティ制限を緩和）
 openai-gpt-image-batch batch-config.json --output-dir ./artifacts --allow-any-path
+
+# 画像編集（インペインティング）のバッチ — 各ジョブで "operation": "edit" と "reference_image_path" を指定
+openai-gpt-image-batch examples/batch-edit.json
+
+# 画像変換（Image-to-Image）のバッチ — 各ジョブで "operation": "transform" と "reference_image_path" を指定
+openai-gpt-image-batch examples/batch-transform.json
 ```
+
+> `reference_image_path` と `mask_image_path` の相対パスは `output_dir` と同じく **プロセスの作業ディレクトリ** を基準に解決されます。入力画像のあるディレクトリで CLI を実行するか、絶対パスを使用してください。
 
 ### バッチ設定JSONスキーマ
 
@@ -122,16 +130,31 @@ openai-gpt-image-batch batch-config.json --output-dir ./artifacts --allow-any-pa
         "type": "object",
         "required": ["prompt"],
         "properties": {
+          "operation": { "enum": ["generate", "edit", "transform"] },
           "prompt": { "type": "string", "minLength": 1 },
           "output_path": { "type": "string" },
+          "reference_image_path": { "type": "string" },
+          "mask_image_path": { "type": "string" },
           "size": { "enum": ["1024x1024", "1024x1536", "1536x1024", "auto"] },
           "quality": { "enum": ["low", "medium", "high", "auto"] },
           "output_format": { "enum": ["png", "jpeg", "webp"] },
           "transparent_background": { "type": "boolean" },
           "moderation": { "enum": ["auto", "low", "medium", "high"] },
           "sample_count": { "type": "integer", "minimum": 1, "maximum": 10 },
-          "return_base64": { "type": "boolean" }
-        }
+          "return_base64": { "type": "boolean" },
+          "model": { "enum": ["gpt-image-1", "gpt-image-1.5", "gpt-image-2"] },
+          "input_fidelity": { "enum": ["low", "high"] }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "operation": { "enum": ["edit", "transform"] } }, "required": ["operation"] },
+            "then": { "required": ["reference_image_path"] }
+          },
+          {
+            "if": { "not": { "properties": { "operation": { "const": "edit" } }, "required": ["operation"] } },
+            "then": { "not": { "required": ["mask_image_path"] } }
+          }
+        ]
       }
     },
     "output_dir": { "type": "string" },

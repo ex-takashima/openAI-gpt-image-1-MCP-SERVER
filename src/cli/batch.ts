@@ -119,10 +119,15 @@ function parseArgs(): {
  */
 function showHelpMessage(): void {
   console.log(`
-OpenAI GPT-Image-1 Batch Generation Tool
+OpenAI GPT-Image-1 Batch Tool (generate / edit / transform)
 
 Usage:
   openai-gpt-image-batch <config.json> [options]
+
+Each job in the config may set "operation" to "generate" (default), "edit",
+or "transform". "edit" and "transform" also require "reference_image_path";
+"edit" additionally accepts an optional "mask_image_path". Relative image
+paths are resolved against the current working directory.
 
 Options:
   --output-dir <path>      Output directory (overrides config)
@@ -165,7 +170,7 @@ For more information, see: https://github.com/ex-takashima/openAI-gpt-image-1-MC
  * Show version information
  */
 function showVersionInfo(): void {
-  console.log('openai-gpt-image-batch version 1.1.0');
+  console.log('openai-gpt-image-batch version 1.4.0');
 }
 
 /**

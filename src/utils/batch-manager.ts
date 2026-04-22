@@ -50,6 +50,49 @@ class Semaphore {
 }
 
 /**
+ * Build tool-specific parameter object from a batch job entry,
+ * dropping fields that don't belong to the target tool so they aren't
+ * forwarded to the underlying API call.
+ */
+function buildJobParameters(
+  job: BatchJobConfig & { output_path: string },
+  toolName: 'generate_image' | 'edit_image' | 'transform_image'
+): Record<string, any> {
+  // Fields that apply to every operation
+  const common: Record<string, any> = {
+    prompt: job.prompt,
+    output_path: job.output_path,
+    size: job.size,
+    quality: job.quality,
+    output_format: job.output_format,
+    moderation: job.moderation,
+    sample_count: job.sample_count,
+    return_base64: job.return_base64,
+    model: job.model,
+  };
+
+  if (toolName === 'generate_image') {
+    return {
+      ...common,
+      transparent_background: job.transparent_background,
+    };
+  }
+
+  // edit_image / transform_image share reference_image_path + input_fidelity
+  const refBased: Record<string, any> = {
+    ...common,
+    reference_image_path: job.reference_image_path,
+    input_fidelity: job.input_fidelity,
+  };
+
+  if (toolName === 'edit_image') {
+    refBased.mask_image_path = job.mask_image_path;
+  }
+
+  return refBased;
+}
+
+/**
  * BatchManager - Handles batch image generation
  */
 export class BatchManager {
@@ -84,10 +127,23 @@ export class BatchManager {
     const jobs = config.jobs.map((job, index) => {
       const filename = job.output_path || `batch_${index + 1}.png`;
       // If output_path is not absolute, prepend output_dir
-      const resolvedPath = isAbsolute(filename) ? filename : resolve(outputDir, filename);
+      const resolvedOutputPath = isAbsolute(filename) ? filename : resolve(outputDir, filename);
+      // Resolve reference/mask paths relative to process cwd (to match existing batch behavior)
+      const resolvedReferencePath = job.reference_image_path
+        ? (isAbsolute(job.reference_image_path)
+            ? job.reference_image_path
+            : resolve(process.cwd(), job.reference_image_path))
+        : undefined;
+      const resolvedMaskPath = job.mask_image_path
+        ? (isAbsolute(job.mask_image_path)
+            ? job.mask_image_path
+            : resolve(process.cwd(), job.mask_image_path))
+        : undefined;
       return {
         ...job,
-        output_path: resolvedPath,
+        output_path: resolvedOutputPath,
+        reference_image_path: resolvedReferencePath,
+        mask_image_path: resolvedMaskPath,
       };
     });
 
@@ -109,15 +165,27 @@ export class BatchManager {
         // Acquire semaphore
         await semaphore.acquire();
 
+        const operation = job.operation || 'generate';
+        const toolName =
+          operation === 'edit'
+            ? 'edit_image'
+            : operation === 'transform'
+              ? 'transform_image'
+              : 'generate_image';
+
         debugLog(`Starting job ${index + 1}/${jobs.length}`, {
+          operation,
           prompt: job.prompt.substring(0, 50),
         });
 
+        // Build tool-specific parameters (strip fields irrelevant to the target tool)
+        const parameters = buildJobParameters(job, toolName);
+
         // Create and start job
         const jobId = this.jobManager.createJob({
-          tool_name: 'generate_image',
+          tool_name: toolName,
           prompt: job.prompt,
-          parameters: job,
+          parameters,
           sample_count: job.sample_count || 1,
         });
 

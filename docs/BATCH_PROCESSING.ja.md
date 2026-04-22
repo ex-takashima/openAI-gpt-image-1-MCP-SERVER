@@ -163,14 +163,19 @@ openai-gpt-image-batch examples/batch-large-scale.json
 
 | フィールド | 型 | 必須 | 説明 | デフォルト |
 |-----------|---|------|------|-----------|
-| `prompt` | string | ✅ | 画像生成プロンプト | - |
+| `operation` | string | ❌ | ジョブ種別: `generate`, `edit`, `transform` | `generate` |
+| `prompt` | string | ✅ | 生成／編集／変換のプロンプト | - |
 | `output_path` | string | ❌ | 出力ファイルパス（ファイル名のみ） | 自動生成 |
+| `reference_image_path` | string | ⚠️ | 参照画像のパス。`edit` と `transform` では必須。相対指定時はプロセスの作業ディレクトリ基準で解決。 | - |
+| `mask_image_path` | string | ❌ | マスク画像のパス。`edit` でのみ有効。相対指定時はプロセスの作業ディレクトリ基準で解決。 | - |
 | `size` | string | ❌ | 画像サイズ: `1024x1024`, `1024x1536`, `1536x1024`, `auto` | `auto` |
 | `quality` | string | ❌ | 品質レベル: `low`, `medium`, `high`, `auto` | `auto` |
 | `output_format` | string | ❌ | 出力形式: `png`, `jpeg`, `webp` | `png` |
-| `transparent_background` | boolean | ❌ | 透明背景を有効化（PNG のみ） | `false` |
+| `transparent_background` | boolean | ❌ | 透明背景を有効化（PNG のみ、`generate` 専用） | `false` |
 | `moderation` | string | ❌ | コンテンツフィルタリング: `auto`, `low`, `medium`, `high` | `auto` |
 | `sample_count` | number | ❌ | 生成する画像数（1-10） | 1 |
+| `model` | string | ❌ | モデル指定: `gpt-image-1`, `gpt-image-1.5`, `gpt-image-2` | ツール既定値 |
+| `input_fidelity` | string | ❌ | `low` または `high`。`edit`／`transform` で顔・ロゴなどを保持（gpt-image-1.5 のみ） | ツール既定値 |
 
 #### `output_dir` (任意)
 
@@ -262,6 +267,62 @@ openai-gpt-image-batch examples/batch-large-scale.json
   }
 }
 ```
+
+#### 4. 画像編集（インペインティング）
+
+`operation` を `edit` にし、`reference_image_path` を指定します。`mask_image_path` は任意で、指定するとマスク（透明部分）のみが再生成されます。
+
+```json
+{
+  "jobs": [
+    {
+      "operation": "edit",
+      "prompt": "空を雪山の上のオーロラに置き換えて",
+      "reference_image_path": "./inputs/landscape.png",
+      "mask_image_path": "./inputs/landscape-sky-mask.png",
+      "output_path": "landscape-aurora.png",
+      "size": "1536x1024",
+      "quality": "high"
+    },
+    {
+      "operation": "edit",
+      "prompt": "人物に赤いニット帽をかぶせて",
+      "reference_image_path": "./inputs/portrait.png",
+      "output_path": "portrait-with-beanie.png",
+      "model": "gpt-image-1.5",
+      "input_fidelity": "high"
+    }
+  ],
+  "output_dir": "./edited-images"
+}
+```
+
+スタンドアロンのサンプルファイルは [`examples/batch-edit.json`](../examples/batch-edit.json) を参照してください。
+
+#### 5. 画像変換（Image-to-Image）
+
+`operation` を `transform` にし、`reference_image_path` を指定します。マスクは使用せず、画像全体が新しいスタイルで再生成されます。
+
+```json
+{
+  "jobs": [
+    {
+      "operation": "transform",
+      "prompt": "この写真をソフトなパステル調の水彩画に変換して",
+      "reference_image_path": "./inputs/city.jpg",
+      "output_path": "city-watercolor.png",
+      "quality": "high"
+    }
+  ],
+  "output_dir": "./transformed-images"
+}
+```
+
+詳しい例は [`examples/batch-transform.json`](../examples/batch-transform.json) を参照してください。
+
+> **相対パスの解決基準:** `reference_image_path` と `mask_image_path` は既存の `output_dir` の挙動に合わせて、**CLI を実行したプロセスの作業ディレクトリ** を基準に解決されます。任意の場所から実行したい場合は絶対パスを使用してください。
+
+> **コストに関する注意:** `edit` と `transform` のジョブは参照画像の入力トークンを追加で消費しますが、現時点で `--estimate-only` はこれを考慮しません。これらの操作の見積もりは下限値として扱ってください。
 
 ---
 
