@@ -1,0 +1,36 @@
+{
+  "jobs": [
+    {
+      "prompt": "A serene Japanese zen garden at sunrise",
+      "output_path": "zen_garden.png",
+      "model": "gpt-image-2",
+      "size": "1024x1024",
+      "quality": "low"
+    },
+    {
+      "prompt": "Wide panoramic view of snow-capped mountains under aurora",
+      "output_path": "aurora.png",
+      "model": "gpt-image-2",
+      "size": "2048x1152",
+      "quality": "medium"
+    },
+    {
+      "prompt": "High-detail product photograph of a ceramic coffee cup",
+      "output_path": "ceramic_cup.png",
+      "model": "gpt-image-2",
+      "size": "2048x2048",
+      "quality": "high",
+      "output_format": "png"
+    },
+    {
+      "prompt": "Cinematic 4K desktop wallpaper of a cyberpunk cityscape at night (experimental)",
+      "output_path": "cyberpunk_4k.png",
+      "model": "gpt-image-2",
+      "size": "3840x2160",
+      "quality": "medium"
+    }
+  ],
+  "output_dir": "./generated-images",
+  "max_concurrent": 2,
+  "timeout": 900000
+}

@@ -6,7 +6,7 @@
 
 English | [日本語](README.ja.md)
 
-A Model Context Protocol (MCP) server that enables image generation and editing using OpenAI's GPT Image API (gpt-image-1 and gpt-image-1.5). Works seamlessly with Claude Desktop, Claude Code, and other MCP-compatible clients.
+A Model Context Protocol (MCP) server that enables image generation and editing using OpenAI's GPT Image API (gpt-image-1, gpt-image-1.5, and gpt-image-2). Works seamlessly with Claude Desktop, Claude Code, and other MCP-compatible clients.
 
 ## Features
 
@@ -35,6 +35,14 @@ A Model Context Protocol (MCP) server that enables image generation and editing 
 - 📝 **Better Text Rendering**: Improved accuracy for text in images
 - 👤 **Input Fidelity**: High-fidelity face/logo preservation (edit & transform)
 - 🔧 **Model Selection**: Choose between gpt-image-1 and gpt-image-1.5
+
+### GPT-Image-2 Support (v1.3.0+)
+- 🆕 **gpt-image-2 Model**: Latest OpenAI image model with flexible sizing
+- 📐 **Flexible Sizes**: 2K/4K presets (2048x2048, 2048x1152, 3840x2160, etc.) and custom `WxH` (16px multiples, each edge ≤3840, ratio ≤3:1, 0.65–8.3 megapixels)
+- 🧪 **Experimental 4K**: `3840x2160` / `2160x3840` available (quality/stability not guaranteed by OpenAI)
+- 🎯 **Auto High-Fidelity**: Reference images are always processed at high fidelity — `input_fidelity` is ignored
+- ⚠️ **No Transparent Background**: `transparent_background` is not supported; use gpt-image-1 / 1.5 if you need transparency
+- 💵 **Lower Low-Tier Pricing**: `low` quality 1024x1024 is ~$0.006/image
 
 ### Batch Processing (v1.1.0+)
 - 📦 **CLI Batch Tool**: Generate multiple images at once via command line

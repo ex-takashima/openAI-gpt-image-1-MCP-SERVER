@@ -6,7 +6,7 @@
 
 [English](README.md) | 日本語
 
-OpenAI の GPT Image API（gpt-image-1 および gpt-image-1.5）を使用して画像生成・編集を可能にする MCP（Model Context Protocol）サーバーです。Claude Desktop、Claude Code などの MCP 対応クライアントとシームレスに連携します。
+OpenAI の GPT Image API（gpt-image-1、gpt-image-1.5、および gpt-image-2）を使用して画像生成・編集を可能にする MCP（Model Context Protocol）サーバーです。Claude Desktop、Claude Code などの MCP 対応クライアントとシームレスに連携します。
 
 ## 特徴
 
@@ -35,6 +35,14 @@ OpenAI の GPT Image API（gpt-image-1 および gpt-image-1.5）を使用して
 - 📝 **テキストレンダリング向上**: 画像内テキストの精度向上
 - 👤 **入力忠実度**: 顔やロゴの高忠実度保持（編集・変換時）
 - 🔧 **モデル選択**: gpt-image-1 と gpt-image-1.5 から選択可能
+
+### GPT-Image-2 サポート (v1.3.0+)
+- 🆕 **gpt-image-2 モデル**: OpenAI の最新画像モデル、柔軟なサイズ指定に対応
+- 📐 **柔軟なサイズ**: 2K/4K プリセット（2048x2048、2048x1152、3840x2160 など）に加え、カスタム `WxH` 指定が可能（16px 刻み、各辺 ≤3840、比率 ≤3:1、0.65〜8.3 メガピクセル）
+- 🧪 **4K（実験的）**: `3840x2160` / `2160x3840` に対応（OpenAI は品質・安定性を保証していません）
+- 🎯 **自動 High Fidelity**: 参照画像は常に高忠実度で処理されるため、`input_fidelity` は無視されます
+- ⚠️ **透明背景は非対応**: `transparent_background` は gpt-image-2 では使えません。透明背景が必要な場合は gpt-image-1 / 1.5 を使用してください
+- 💵 **低品質プランの割安価格**: `low` 品質・1024x1024 は 1枚あたり約 $0.006
 
 ### バッチ処理機能 (v1.1.0+)
 - 📦 **CLIバッチツール**: コマンドラインから複数画像を一括生成

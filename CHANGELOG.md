@@ -5,6 +5,30 @@ All notable changes to the OpenAI GPT-Image-1 MCP Server will be documented in t
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-04-22
+
+### Added
+- **gpt-image-2 support** across `generate_image`, `edit_image`, `transform_image`, and batch CLI
+  - New model identifier `gpt-image-2` in all tool `model` enums
+  - New size presets: `2048x2048`, `2048x1152`, `1152x2048`, `3840x2160`, `2160x3840`
+  - Custom `WxH` sizes for gpt-image-2 (16px multiples, each edge ≤3840, ratio ≤3:1, 0.65–8.3 megapixels)
+  - `gpt-image-2` pricing table in `calculateCost()` (low: $0.006, medium: $0.053, high: $0.211 @ 1024x1024; 4K sizes are experimental pricing)
+  - Pixel-scaled cost estimation fallback for custom sizes not in the table
+  - `MODEL_CAPABILITIES` declarative table in `src/types/models.ts` centralizing per-model feature flags and size constraints
+  - `isExperimentalSize()` helper with warning logs for `3840x2160` / `2160x3840`
+  - `examples/batch-gpt-image-2.json` sample batch configuration covering 1K / 2K / 4K
+
+### Changed
+- `validateImageSize(size, model)` — signature extended with model context; each model now validates against its own capability set
+- `transparent_background` — now rejected with `InvalidParams` when combined with `gpt-image-2` (OpenAI API does not support it)
+- `input_fidelity` — now capability-driven: forwarded for gpt-image-1.5, silently ignored with a debug warning for gpt-image-2 (OpenAI API returns 400 if sent) and gpt-image-1
+- Tool schema `description` fields updated to document gpt-image-2 constraints and custom-size rules
+
+### Migration notes
+- **No breaking changes** for gpt-image-1 / gpt-image-1.5 users — existing configs continue to work.
+- To use gpt-image-2: set `model: "gpt-image-2"` and optionally pick one of the new size presets or a custom `WxH`.
+- If you programmatically pass `transparent_background: true` or `input_fidelity` with gpt-image-2, the former now errors out immediately; the latter is dropped with a warning in DEBUG logs.
+
 ## [1.0.4] - 2025-10-17
 
 ### Added
