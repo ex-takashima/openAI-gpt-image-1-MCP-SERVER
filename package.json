@@ -15,7 +15,12 @@
     "LICENSE",
     ".env.example",
     "examples/**/*.json",
-    "docs/**/*.md"
+    "docs/advanced/**/*.md",
+    "docs/BATCH_PROCESSING.md",
+    "docs/BATCH_PROCESSING.ja.md",
+    "docs/CLI_REFERENCE.md",
+    "docs/CLI_REFERENCE.ja.md",
+    "docs/ENVIRONMENT_VARIABLES.md"
   ],
   "scripts": {
     "build": "tsc",
